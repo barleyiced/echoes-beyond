@@ -1,0 +1,21 @@
+# Keep working copies LF on every platform, regardless of core.autocrlf.
+#
+# Git for Windows sets core.autocrlf=true by default, which rewrites the whole
+# tree to CRLF on `git checkout .` or `git reset --hard`. Those are exactly the
+# commands used to abandon a bad refactor, so without this a revert arrives
+# buried in 157 files of line-ending churn.
+* text=auto eol=lf
+
+# Batch files are the exception, and it is not cosmetic: cmd.exe seeks by byte
+# offset when it executes a `goto`, and those offsets assume CRLF. Given LF-only
+# endings the seek lands one byte late per line and drifts further the deeper
+# into the file it goes, so the interpreter starts eating the first character of
+# each command — `set` runs as `et`, `echo` as `cho`, then as `ho`. du.bat is
+# entirely goto dispatch, so `du publish` failed partway through with a screen of
+# "'et' is not recognized" and no indication that line endings were involved.
+# The rule above had been quietly breaking every .bat in the repo on checkout.
+*.bat text eol=crlf
+
+# Binary assets: never touch these.
+*.png binary
+*.db  binary

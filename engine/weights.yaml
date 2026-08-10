@@ -1,0 +1,118 @@
+# Scoring weights. Everything the engine values is here and nothing is hidden in
+# code, so a recommendation you disagree with can be argued with directly.
+#
+# Scores are relative, not absolute: 87 vs 61 means "clearly better", not
+# "87% optimal". Tune by running alongside a real clear and adjusting whatever
+# produced a call you disagreed with.
+
+factors:
+  # Progress toward Equations. The single most important factor — it is what
+  # prevents diluting across Paths and activating nothing.
+  equation_progress: 40
+
+  # Penalty for adding to a Path you have barely invested in, scaled by how
+  # little of the run is left. Cheap to spread on Plane 1, ruinous on Plane 3.
+  path_dilution: 18
+
+  # Overlap between the entry's mechanic tags and the team's.
+  team_synergy: 22
+
+  # Weighted curios / anything gated on Path or Element.
+  gate_fit: 15
+
+  # Mask and Wishpower interaction.
+  mask_synergy: 8
+
+  # Base power by rarity.
+  rarity: 12
+
+  # Room left to grow at the Workbench of Creation.
+  upgrade_headroom: 6
+
+  # Early Planes favour scaling and enablers; late Planes favour immediate power.
+  plane_urgency: 8
+
+rarity_value:
+  blessing:
+    Legendary: 1.0
+    Rare: 0.62
+    Common: 0.3
+  curio:
+    Legendary: 1.0
+    Rare: 0.6
+    Common: 0.3
+    Negative: -0.8
+
+# Tags treated as "scales over the run" rather than "power right now".
+scaling_tags: [economy, reroll, upgrade, sp_positive, energy, spd]
+
+# Tags that are close to universally good regardless of team.
+generic_good_tags: [dmg_bonus, crit, vulnerability, res_pen, action_forward]
+
+# --------------------------------------------------------------------------
+# Run rating (engine/rating.py). Grades the run you are holding out of 100 and
+# compares it to a modelled reference run at the same Domain.
+#
+# Nothing reads these back into a recommendation — the rating is a report. They
+# are guesses in exactly the sense the rest of this file is, and are the first
+# things to change if the verdict disagrees with how a run actually felt.
+rating:
+  # Weights sum to 100 across the positive factors; drag is subtracted on top,
+  # so a bag full of dead weight can score below the sum of its parts.
+  factors:
+    equations: 34        # live Equations — by far the biggest real power spike
+    concentration: 20    # depth on one Path, which is what makes them live
+    blessings: 20        # how much you hold, weighted by rarity
+    curios: 12
+    enhance: 6           # Workbench actually used
+    miracles: 8
+    drag: 14             # subtracted: negatives, dead weighted, no commitment
+
+  # What "full marks" looks like at the end of a strong run.
+  # Each live Equation past the best counts for half of the one before it. A
+  # flat sum let two blessings on each of six Paths light up sixteen cheap Rares
+  # and beat a committed build, which is backwards — see rating._stacked.
+  equation_decay: 0.5
+
+  targets:
+    equation_value: 1.5            # e.g. a Boundary plus a Legendary
+    path_depth: 9                  # blessings on the deepest Path
+    blessing_value_per_pick: 0.55  # x the run's total picks; mean rarity value
+    curio_value: 7.0
+    miracles: 6
+
+  # An enhanced Blessing is at level 2, so it is worth more than one copy and
+  # much less than two.
+  enhanced_bonus: 0.45
+  # A triggerable weighted curio, per unit of gate fit.
+  weighted_value: 0.7
+
+  drag:
+    negative_curio: 0.30      # each, as a fraction of the drag weight
+    dead_weighted: 0.18       # each
+    no_commitment: 0.35       # nothing past the commitment floor
+    scatter_after: 5          # blessings held before scatter is a fault at all
+
+  # The reference run: competent, not optimal.
+  reference_focus: 0.55            # share of picks on the committed Path
+  reference_second: 0.28           # share on the second
+  reference_rarity: 0.5            # mean rarity value of what it holds
+  # Equations the reference has picked up per Domain passed. Meeting a Path
+  # requirement does not grant an Equation — a real Domain-10 run met 37 of the
+  # 80 and held four — so the reference has to be capped the same way or nothing
+  # could ever match it.
+  reference_equations_per_domain: 0.4
+  reference_curio_per_domain: 0.5
+  reference_enhanced_share: 0.35
+  reference_miracles_per_domain: 0.3
+
+thresholds:
+  # Top two candidates within this fraction of each other are reported as a
+  # close call rather than a confident pick.
+  close_call_margin: 0.08
+
+  # Below this many matched tags, synergy reasoning is flagged low-confidence.
+  min_tags_for_confidence: 2
+
+  # A Path with fewer than this many blessings is "uncommitted" for dilution.
+  commitment_floor: 3

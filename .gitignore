@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.pyc
+data/cache/
+data/dataset.json
+data/dataset.db
+runs/
+.pytest_cache/
+
+# Browser build output (rebuild with: python -m data.site)
+web/static/dist/
+site/
+
+# The vendored Pyodide runtime that data/site.py copies into site/. 17 MB of
+# somebody else's release: it belongs in the published branch, not in the
+# history of this one. Install it with: npm install pyodide
+node_modules/
+
+# Per-machine editor and tool state is excluded in .git/info/exclude rather
+# than here. That file is local and never pushed, which is the point: naming a
+# particular tool in a tracked file tells every visitor which one you use, and
+# an ignore rule is a poor place to advertise that.
+.wrangler/
