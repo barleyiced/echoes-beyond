@@ -54,7 +54,7 @@ EXPECT = {
     "curios": 235,
     "weighted_curios": 17,
     "masks": 9,
-    "mask_gifts": 287,       # Wishpower Miracles, across every Mask pool
+    "mask_gifts": 286,       # Wishpower Miracles, across every Mask pool
     "mask_talents": 18,
 }
 
@@ -417,7 +417,7 @@ def build_domains(textmap: dict) -> tuple[list[dict], list[dict]]:
     These are what you choose between at a waypoint. `RoguePersonaRoomCompType`
     holds the 18 types — Combat, Occurrence, Wealth, Store, Reward, Respite,
     Elite, Boss and the hidden pink Escapades — and `RoguePersonaRoomAttribute`
-    holds the 55 modifiers a door can carry (+100 Cosmic Fragments, +1 Blessing,
+    holds the 54 modifiers a door can carry (+100 Cosmic Fragments, +1 Blessing,
     a level increase, and so on).
 
     Both tables use obfuscated keys, so fields come from shape detection.
@@ -445,6 +445,12 @@ def build_domains(textmap: dict) -> tuple[list[dict], list[dict]]:
     arows = load_table("RoguePersonaRoomAttribute")
     aroles = shapes.detect_roles(arows, textmap)
     shapes.require(aroles, Role.ID, Role.NAME, Role.EFFECT, table="RoguePersonaRoomAttribute")
+    # Row 901 is the tutorial's copy of beacon 103, right down to the effect
+    # text, and it says so in its own category column ("Tutorial", where every
+    # shipped row reads Positive, Negative or Special). It reached the door
+    # beacon picker as a second identical "Curio" and scored as a positive,
+    # since `waypoint` reads anything that is not Negative as one.
+    arows = shapes.drop_dev_rows(arows, aroles)
 
     attrs = []
     for r in arows:
@@ -670,6 +676,11 @@ def build_masks(textmap: dict) -> tuple[list[dict], list[dict], list[dict]]:
     grows2 = load_table("RoguePersonaStyleGift")
     g2 = shapes.detect_roles(grows2, textmap)
     shapes.require(g2, Role.ID, Role.NAME, Role.EFFECT, table="RoguePersonaStyleGift")
+    # Shipped gifts run 101-239 and 601-788. Row 901 is alone above that and is
+    # a copy of gift 176 with an empty Mask list, so `universal` put it in every
+    # Mask's pool: the Wishpower tab listed the same "Attaches 1 random beacon
+    # to 1 designated Domain(s)" twice, with nothing to choose between them.
+    grows2 = shapes.drop_dev_rows(grows2, g2)
     gifts = []
     for r in grows2:
         p = shapes.params(r, g2)
@@ -837,6 +848,26 @@ def build_index(dataset: dict) -> None:
 # entry point
 # --------------------------------------------------------------------------
 
+def _twins(rows: list[dict], fields: tuple[str, ...],
+           list_field: str | None = None) -> list[tuple]:
+    """Id pairs for rows a reader has no way to tell apart.
+
+    Everything the player sees about a Miracle or a beacon is in `fields`, so two
+    rows agreeing on all of them are one row twice as far as any surface of this
+    app is concerned, whatever the ids say.
+    """
+    seen: dict[tuple, object] = {}
+    pairs = []
+    for r in rows:
+        key = tuple(r.get(f) for f in fields)
+        if list_field:
+            key += (tuple(r.get(list_field) or ()),)
+        first = seen.setdefault(key, r["id"])
+        if first != r["id"]:
+            pairs.append((first, r["id"]))
+    return pairs
+
+
 def verify(ds: dict) -> list[str]:
     """Return a list of problems; empty means the dataset looks sane."""
     problems = []
@@ -868,6 +899,25 @@ def verify(ds: dict) -> list[str]:
     nameless = [g["id"] for g in ds["mask_gifts"] if not g["effect"]]
     if nameless:
         problems.append(f"mask_gifts: {len(nameless)} have no effect text")
+
+    # Two rows a reader cannot tell apart are a choice that does not exist. The
+    # Wishpower pool is browsed rather than searched, precisely because 136 of
+    # these share three names between them, so the effect text is the only thing
+    # separating one row from the next — and gift 901 matched another row in all
+    # of it. The id rule in `build_masks` drops the one we know about; this is
+    # what catches the next patch's, whatever id it lands on.
+    twinned = _twins(ds["mask_gifts"], ("name", "rarity", "effect"), "mask_ids")
+    if twinned:
+        problems.append(
+            f"mask_gifts: {len(twinned)} pairs are identical in name, rarity, effect "
+            f"and Mask list, e.g. ids {twinned[0]}")
+
+    # Same for the door beacons, which are picked off a list of names.
+    twinned = _twins(ds["beacons"], ("name", "effect", "polarity"))
+    if twinned:
+        problems.append(
+            f"beacons: {len(twinned)} pairs are identical in name, effect and "
+            f"polarity, e.g. ids {twinned[0]}")
 
     # Same for curios, and for the same reason — a curio that removes your
     # "#{room_comp_type:2}" Domains is a ranked card the player cannot read.

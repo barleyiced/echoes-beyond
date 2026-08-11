@@ -25,6 +25,29 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+## 2026-08-11 · build 7100beea979b
+
+### Bug Fixes
+
+- **The Wishpower pool no longer lists the same Miracle twice.** "Attaches 1
+  random beacon to 1 designated Domain(s)" appeared as two Ordinary rows with
+  nothing to tell them apart, so the tab asked you to choose between them. One
+  of the two was an unshipped copy the game files carry but never deal you. Your
+  Mask's pool is one shorter as a result, and reshuffle is now priced against
+  the real pool.
+- **The door beacon list no longer offers two identical "Curio" beacons.** The
+  second one belongs to the tutorial and cannot appear on a door you draw.
+- The build now stops if two Miracles or two beacons ever read the same again.
+- **Propagation no longer wears the Elation icon.** Every Propagation blessing,
+  equation and Path row across the whole app drew the Elation art, so the two
+  Paths looked identical wherever you read a card by its icon. The icon set we
+  pull from ships no Propagation art at all, and the missing file was quietly
+  standing in with Elation's. Propagation now shows a green "P" badge instead,
+  which is the same fallback any Path without art uses. Nothing about your run
+  or any score changes. Only the picture was wrong.
+
+## 2026-08-10 · build ed2d160cad04
+
 ### Notices
 
 - **The site has moved.** It now lives at `barleyiced.github.io/echoes-beyond`.

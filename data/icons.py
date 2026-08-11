@@ -50,11 +50,15 @@ ELEMENT_FILES = {
     "Imaginary": "ImaginaryWhite.png",
 }
 
+# Only ever map a Path to art that *is* that Path. StarRailRes ships no
+# Propagation icon at all (checked against the full recursive tree), and the
+# fallback here used to end "Elation.png" — so every Propagation blessing in the
+# app rendered the Elation icon, in the one visual language a player reads a card
+# by. A lettered badge on the Path's own colour ring is the honest answer.
 FALLBACKS = {
     "Elation": ["Joy.png"],
     "Remembrance": ["Memory.png"],
     "The Hunt": ["TheHunt.png"],
-    "Propagation": ["Propagation.png", "Elation.png"],
 }
 
 

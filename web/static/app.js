@@ -790,7 +790,7 @@ function renderDoors() {
 
     card.append(doorHeader(d));
 
-    // Beacon picker: filtered list, since 55 of them is too many for a select.
+    // Beacon picker: filtered list, since 54 of them is too many for a select.
     const picker = el('div', 'bpicker');
     const filter = document.createElement('input');
     filter.placeholder = 'Add a beacon by name or effect…';
@@ -1068,7 +1068,7 @@ async function applyEnhances(steps) {
 
 // --------------------------------------------------------------- the store
 // A shelf is entered card by card, because the Curio names are the one thing on
-// a store screen that is searchable — unlike the Wishpower pool, where 137 rows
+// a store screen that is searchable — unlike the Wishpower pool, where 136 rows
 // share three names between them.
 let SHELF = [];
 let SHELF_KIND = 'curio';
@@ -1497,7 +1497,7 @@ function setupSpend() {
 }
 
 // ------------------------------------------------------------- wishpower
-// The pool is browsed, not searched. 137 of the 287 Miracles share three names
+// The pool is browsed, not searched. 136 of the 286 Miracles share three names
 // between them, so typing a name cannot get you to the right row — you have to
 // recognise the effect, which means seeing the list.
 

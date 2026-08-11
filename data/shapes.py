@@ -310,5 +310,40 @@ def drop_placeholders(rows: Iterable[dict], textmap: dict, roles: dict[Role, str
     return [r for r in rows if not is_placeholder_row(r, textmap, roles)]
 
 
+# The RoguePersona family parks its unshipped rows in a 9xx id block, above
+# everything the game actually ships, and the `&&&` test above only catches the
+# one that also has placeholder *text*. The other two carry real text copied off
+# a real row, which is what makes them invisible:
+#
+#   RoguePersonaStyle 901        'Camera Mask', flavour '&&&' (caught already)
+#   RoguePersonaStyleGift 901    a copy of gift 176, and with no Mask list it
+#                                entered every Mask's Miracle pool as a second
+#                                identical "Ordinary Miracle"
+#   RoguePersonaRoomAttribute 901 a copy of beacon 103, category 'Tutorial'
+#
+# Nothing in the pinned data references any of them, and the copies are byte
+# identical to their originals once TextMap is resolved (the game stores the
+# same string twice under different hashes), so a reader has no way to tell the
+# two rows apart and neither does this build.
+DEV_ID_FLOOR = 900
+
+
+def drop_dev_rows(rows: Iterable[dict], roles: dict[Role, str],
+                  floor: int = DEV_ID_FLOOR) -> list[dict]:
+    """Drop the unshipped rows a table parks above `floor`.
+
+    Self-guarding, because id spaces differ per table and a bare threshold would
+    be a trap: the rule only fires when the bulk of the table already sits below
+    the floor, so `RoguePersonaTalent` (ids from 12001) and `RoguePersonaLayerRoom`
+    (from 3001) keep every row.
+    """
+    rows = list(rows)
+    ids = [get(r, roles, Role.ID) for r in rows]
+    numeric = [i for i in ids if isinstance(i, int)]
+    if not numeric or sum(i < floor for i in numeric) < len(numeric) * 0.9:
+        return rows
+    return [r for r, i in zip(rows, ids) if not (isinstance(i, int) and i >= floor)]
+
+
 def role_histogram(rows: list[dict], textmap: dict | None = None) -> Counter:
     return Counter(detect_all_roles(rows, textmap).values())

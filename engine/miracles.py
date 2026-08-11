@@ -5,7 +5,7 @@ upstream — the game shows them as Ordinary / Rare / Extraordinary Miracles, pl
 the Core lines that upgrade your own Mask). Three things make this a different
 problem from picking a blessing:
 
-1. **Names carry no information.** 137 of the 287 Miracles are called exactly
+1. **Names carry no information.** 136 of the 286 Miracles are called exactly
    "Ordinary Miracle", "Rare Miracle" or "Extraordinary Miracle". The effect text
    is the only thing that distinguishes them, so everything here reads the
    effect and nothing reads the name.
@@ -222,7 +222,7 @@ def classify(miracle: dict) -> list[Effect]:
     return out
 
 
-# What a Miracle makes you do *after* you take it. 89 of the 287 hand you a
+# What a Miracle makes you do *after* you take it. 87 of the 286 hand you a
 # second decision — the "Select Waypoint Pass" screen, where you designate a card
 # out of your whole draw pile — and that choice can matter more than the Miracle
 # did. Blanking your Lv3 Elite carrying a Blessing beacon is a disaster wearing

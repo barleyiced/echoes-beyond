@@ -275,7 +275,7 @@ def deck_targets(body: dict) -> dict:
 def miracles_pool(body: dict) -> dict:
     """Every Miracle the chosen Mask can be offered.
 
-    The pool is browsable rather than only searchable because 137 of the 287
+    The pool is browsable rather than only searchable because 136 of the 286
     Miracles share three names between them — you cannot type your way to the
     right row, you have to recognise the effect.
     """

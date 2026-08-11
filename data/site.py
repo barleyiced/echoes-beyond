@@ -240,15 +240,40 @@ def build_id() -> tuple[str, str]:
 
 
 def _copy_tree(src: Path, dest: Path) -> int:
+    """Mirror `src` into `dest`, including the files that are no longer in `src`.
+
+    The pruning half is not tidiness, it is correctness, and it was missing.
+    `build_site()` never clears `site/`, so before this a file deleted from
+    `web/static/` stayed in the published tree for good: the overlay copy had
+    nothing to say about it and every later `du publish` shipped it again. That
+    is the "deploying without rebuilding serves the previous build" failure with
+    the rebuild actually happening, which makes it worse, and the precache list
+    below is built by walking `SITE`, so the stale file got pinned into the
+    service worker by name as well.
+    Found via the Propagation icon: deleting the wrong art locally fixes nothing
+    if the hosted copy keeps 200-ing, because the lettered-badge fallback only
+    fires on a 404.
+    """
     dest.mkdir(parents=True, exist_ok=True)
     n = 0
+    keep = set()
     for p in sorted(src.rglob("*")):
         if p.is_dir() or "__pycache__" in p.parts:
             continue
-        out = dest / p.relative_to(src)
+        rel = p.relative_to(src)
+        keep.add(rel)
+        out = dest / rel
         out.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(p, out)
         n += 1
+
+    for p in sorted(dest.rglob("*"), reverse=True):
+        if p.is_dir():
+            continue
+        if p.relative_to(dest) not in keep:
+            print(f"  dropped stale    {p.relative_to(dest)}")
+            p.unlink()
+
     return n
 
 

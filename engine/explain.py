@@ -376,7 +376,7 @@ def _miracle_group() -> dict:
                 "Factors.",
                 ["Factor", "Weight"],
                 sorted(([_label(k), v] for k, v in miracles.WEIGHTS.items()), key=lambda r: -r[1]),
-                "137 of the 287 Miracles are called exactly “Ordinary Miracle”, “Rare Miracle” or "
+                "136 of the 286 Miracles are called exactly “Ordinary Miracle”, “Rare Miracle” or "
                 "“Extraordinary Miracle”. Nothing here reads the name, only the effect text.",
             ),
             _table(
