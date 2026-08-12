@@ -25,6 +25,8 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+## 2026-08-12 · build 1f34a3b3a0bc
+
 ### Optimizations
 
 - The app now works on a phone. The tabs sit in one row you swipe across
