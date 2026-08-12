@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- viewport-fit=cover lets the page paint under a notch. The phone block in
+     app.css pays that back with env(safe-area-inset-*) padding, so nothing
+     readable ends up beneath the cutout or the home indicator. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0a0b12" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#eef0f6" media="(prefers-color-scheme: light)">
+<title>DU Companion</title>
+<link rel="stylesheet" href="static/app.css">
+<meta name="du-backend" content="pyodide">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+<meta name="referrer" content="no-referrer">
+<meta name="du-build" content="09014d125ce3">
+<meta name="du-source" content="0d31b2e">
+<meta name="du-built" content="2026-08-12">
+</head>
+<body>
+
+<!--
+  Shown only on the browser build, while CPython-on-WASM starts up. It reports
+  the actual step rather than spinning, because the first visit downloads a
+  language runtime and an unexplained pause of that length reads as a hang.
+-->
+<div id="booting" hidden>
+  <div class="bootcard">
+    <svg class="bootmark"><use href="#i-sigil"/></svg>
+    <h1>DU Companion</h1>
+    <p id="bootStep">Starting…</p>
+    <p id="bootDetail" class="bootdetail"></p>
+    <p class="bootnote">
+      The whole engine runs in this tab. Nothing about your run leaves your browser.
+      This setup happens once, and after that it starts from cache.
+    </p>
+  </div>
+</div>
+
+<!-- icon sprite: drawn inline so the app stays self-contained and offline -->
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-sigil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+    <path d="M12 2l2.4 6.5L21 11l-6.6 2.5L12 20l-2.4-6.5L3 11l6.6-2.5z" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-setup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <circle cx="12" cy="8" r="3.2"/><path d="M5 20a7 7 0 0114 0" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-decide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M4 6h9M4 12h6M4 18h9" stroke-linecap="round"/><path d="M16 9l3 3-3 3" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-door" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M5 21V4a1 1 0 011-1h9a1 1 0 011 1v17M3 21h18" stroke-linecap="round"/><circle cx="13" cy="12" r="1" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="i-spend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.5 10h4a1.8 1.8 0 010 3.6h-4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-run" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-frag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+    <path d="M12 3l7 4.5v9L12 21l-7-4.5v-9z" stroke-linejoin="round"/><path d="M12 3v18M5 7.5l14 9M19 7.5l-14 9" opacity=".45"/>
+  </symbol>
+  <symbol id="i-heat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+    <path d="M12 3s5 4.6 5 9a5 5 0 01-10 0c0-2 1-3.4 1-3.4S9.5 11 11 11c1.8 0 1-4.6 1-8z" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M12 4.5l8.5 15h-17z" stroke-linejoin="round"/><path d="M12 10v4.2M12 17.2v.1" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M4 8V5.5A1.5 1.5 0 015.5 4H8M16 4h2.5A1.5 1.5 0 0120 5.5V8M20 16v2.5a1.5 1.5 0 01-1.5 1.5H16M8 20H5.5A1.5 1.5 0 014 18.5V16" stroke-linecap="round"/>
+    <path d="M4 12h16" stroke-linecap="round" opacity=".6"/>
+  </symbol>
+  <symbol id="i-rank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M12 3l2.6 5.6 6.1.8-4.5 4.2 1.2 6L12 16.8 6.6 19.6l1.2-6-4.5-4.2 6.1-.8z" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M3.6 17a9 9 0 1 1 16.8 0" stroke-linecap="round"/>
+    <path d="M12 16.5l4.2-5.6" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-eq" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M4 9h16M4 15h16" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-mask" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+    <path d="M3.5 7.5C3.5 6 5 5.2 12 5.2s8.5.8 8.5 2.3c0 5.6-2.4 11.3-8.5 11.3S3.5 13.1 3.5 7.5z" stroke-linejoin="round"/>
+    <path d="M8.5 10.2c.9-.7 2-.7 2.9 0M12.6 10.2c.9-.7 2-.7 2.9 0" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M4.5 8h15l-1.2 11.2a1.5 1.5 0 01-1.5 1.3H7.2a1.5 1.5 0 01-1.5-1.3z" stroke-linejoin="round"/>
+    <path d="M9 8V6.2a3 3 0 016 0V8" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-wish" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+    <path d="M12 3.2l1.9 4.4 4.8.5-3.6 3.2 1 4.7L12 13.6l-4.1 2.4 1-4.7L5.3 8.1l4.8-.5z" stroke-linejoin="round"/>
+    <path d="M7.5 19.5h9" stroke-linecap="round" opacity=".5"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+    <path d="M5 12.6l4.6 4.4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    <path d="M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M18 4l3 3-3 3M18 14l3 3-3 3" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-store" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+    <path d="M3.6 9.5h16.8v9.4a1.5 1.5 0 01-1.5 1.5H5.1a1.5 1.5 0 01-1.5-1.5z" stroke-linejoin="round"/>
+    <path d="M3 9.5L5 4h14l2 5.5" stroke-linejoin="round"/><path d="M9.5 9.5v3.2M14.5 9.5v3.2" stroke-linecap="round" opacity=".55"/>
+  </symbol>
+  <symbol id="i-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+    <circle cx="12" cy="12" r="8.5"/><path d="M6.2 6.2l11.6 11.6" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+    <path d="M12 4v16M7 20h10M4.5 8.5h15M12 5.6l-7.5 2.9M12 5.6l7.5 2.9" stroke-linecap="round"/>
+    <path d="M1.6 14a2.9 2.9 0 005.8 0zM16.6 14a2.9 2.9 0 005.8 0z" stroke-linejoin="round"/>
+    <path d="M4.5 8.5L1.6 14M19.5 8.5L22.4 14" stroke-linecap="round"/>
+  </symbol>
+</svg>
+
+<header>
+  <div class="brand">
+    <svg class="sigil"><use href="#i-sigil"/></svg>
+    <h1>DU Companion</h1>
+  </div>
+  <div class="meta" id="meta"></div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="setup" class="active"><svg><use href="#i-setup"/></svg>Setup <kbd>1</kbd></button>
+  <button data-tab="decide"><svg><use href="#i-decide"/></svg>Decide <kbd>2</kbd></button>
+  <button data-tab="door"><svg><use href="#i-door"/></svg>Door <kbd>3</kbd></button>
+  <button data-tab="spend"><svg><use href="#i-spend"/></svg>Spend <kbd>4</kbd></button>
+  <button data-tab="wish"><svg><use href="#i-wish"/></svg>Wishpower <kbd>5</kbd></button>
+  <button data-tab="owned"><svg><use href="#i-bag"/></svg>What I own <kbd>6</kbd></button>
+  <button data-tab="run"><svg><use href="#i-run"/></svg>Run state <kbd>7</kbd></button>
+  <button data-tab="how"><svg><use href="#i-scale"/></svg>How it scores <kbd>8</kbd></button>
+  <button data-tab="log"><svg><use href="#i-run"/></svg>Changelog <kbd>9</kbd></button>
+</nav>
+
+<div class="posbar">
+  <label>Domain
+    <input type="number" id="domainIndex" min="1" value="1">
+    <span style="color:var(--dimmer)">/</span>
+    <input type="number" id="domainTotal" min="1" value="13">
+    <select id="runLength" title="Known run lengths"></select>
+  </label>
+  <div class="track" id="track"></div>
+  <div class="stat">
+    <svg><use href="#i-frag"/></svg>
+    <label><input type="text" id="fragments" class="num-wide" inputmode="numeric"
+                  autocomplete="off" value="0" title="Cosmic Fragments"></label>
+  </div>
+  <div class="stat">
+    <svg><use href="#i-heat"/></svg>
+    <label><input type="number" id="heat" min="0" value="0" title="Heat">
+      <span style="color:var(--dimmer)">/</span>
+      <input type="number" id="heatMax" min="0" value="0" title="Max Heat"></label>
+  </div>
+  <div class="stat">
+    <svg><use href="#i-wish"/></svg>
+    <label>Wishpower <input type="number" id="wishBar" min="0" value="0"
+                     title="Wishpower level. It ticks up all run, so it sits here as well as on Setup and the Wishpower tab"></label>
+  </div>
+  <div class="posnote" id="posNote"></div>
+</div>
+
+<!-- ------------------------------------------------------------ SETUP -->
+<section id="tab-setup" class="tab active">
+
+  <!--
+    For someone who did not build this. The README assumes an operator; a friend
+    opening a link is a player. Dismissible, and remembered.
+  -->
+  <div class="card intro" id="intro" hidden>
+    <button class="introclose ghost" id="introClose" title="Dismiss">&times;</button>
+    <h2><svg><use href="#i-sigil"/></svg>What this is</h2>
+    <p>
+      A second opinion for a <b>Divergent Universe: Arcadian Chronicles</b> run. Tell it
+      where you are and what you hold, and it scores what the game offers against the
+      datamined numbers: Blessings, Curios, doors, Occurrence options, Workbench spending,
+      Masks. You see <i>why</i> one pick beats another.
+    </p>
+    <p>
+      Start on this tab. Set your Domain <b>x / y</b> and difficulty in the bar above, pick
+      your Mask, add your team. Then use <b>Decide</b> when the game offers you something,
+      <b>Door</b> at a waypoint, <b>Spend</b> at a shop or Occurrence.
+    </p>
+    <p class="introcaveat">
+      <b>This is a heuristic, not a solved game.</b> The weights are informed guesses that
+      nobody has checked against a real Difficulty&nbsp;5 clear. Every score shows its
+      working on <b>How it scores</b>, so overrule it when you know better. Your browser
+      keeps your run and sends it nowhere. Use <b>Export</b> on <i>What I own</i> if you
+      want a copy you can keep.
+    </p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2><svg><use href="#i-mask"/></svg>Mask</h2>
+      <p class="hint" id="maskHint">You choose one at the start, and it shapes the whole run.</p>
+      <div class="row">
+        <button id="compareToggle" class="ghost">RNG offered me a few, compare them</button>
+        <button id="rankMasks" class="primary" hidden><svg><use href="#i-rank"/></svg>Rank these</button>
+      </div>
+      <div id="maskRanking"></div>
+      <div id="masks" class="masklist"></div>
+    </div>
+    <div>
+      <div class="card">
+        <h2><svg><use href="#i-setup"/></svg>Team</h2>
+        <p class="hint">Drives synergy scoring and weighted-curio gating.</p>
+        <div id="team" class="team"></div>
+        <input id="charSearch" placeholder="Add a character…" autocomplete="off">
+        <div id="charResults" class="results"></div>
+      </div>
+      <div class="card">
+        <h2><svg><use href="#i-run"/></svg>Difficulty</h2>
+        <p class="hint">Read this off the <b>I to V</b> rail down the left of the game's
+          Ordinary Extrapolation screen. V is 5. On <b>Difficulty&nbsp;X</b> (Astronomical
+          Division Mode, X4 to X9) enter <b>5</b>. X sits above V, the pinned game data
+          has no tier for it, so nothing here models its extra rules.</p>
+        <div class="row">
+          <label>Difficulty <input type="number" id="difficulty" min="1" max="5" value="1"></label>
+          <label>Plane <input type="number" id="plane" min="1" max="3" value="1"></label>
+          <label>Wishpower Lv <input type="number" id="wishpower" min="0" value="0"></label>
+        </div>
+        <p class="hint" id="difficultyNote"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ----------------------------------------------------------- DECIDE -->
+<section id="tab-decide" class="tab split">
+  <div class="col">
+  <div class="card">
+    <h2><svg><use href="#i-decide"/></svg>What is on offer?</h2>
+    <div class="row">
+      <label>Type
+        <select id="offerKind">
+          <option value="blessing">Blessing</option>
+          <option value="curio">Curio</option>
+          <option value="weighted_curio">Weighted Curio</option>
+          <option value="equation">Equation</option>
+        </select>
+      </label>
+      <button id="clearOffer" class="ghost">Clear</button>
+    </div>
+    <p class="hint">
+      Type any part of a name. Clipped text works<span class="ocr-only">, exactly as it
+      does when read from a screenshot</span>. When several entries share a prefix, this
+      asks you which one rather than guessing.
+    </p>
+    <input id="offerSearch" placeholder="Search the offered option…" autocomplete="off">
+    <div id="offerResults" class="results"></div>
+
+    <div id="ocrPanel" hidden>
+      <div id="dropzone" class="dropzone" tabindex="0">
+        <svg><use href="#i-scan"/></svg>
+        <span>Paste a screenshot (Ctrl+V) or drop an image</span>
+        <span style="color:var(--dimmer);font-size:11.5px">Fills in the options for you to confirm one by one</span>
+      </div>
+      <div id="ocrCards"></div>
+    </div>
+
+    <div id="offerList" class="chips"></div>
+    <div class="row">
+      <button id="rankBtn" class="primary" disabled><svg><use href="#i-rank"/></svg>Rank options</button>
+    </div>
+    <p class="hint">Each result carries a <b>Take</b> button. Press it and the pick goes
+      straight into <em>What I own</em>, so ranking and tracking are one job.</p>
+  </div>
+  </div>
+  <div class="col"><div id="ranking"></div></div>
+</section>
+
+<!-- ------------------------------------------------------------- DOOR -->
+<section id="tab-door" class="tab split">
+  <div class="col">
+  <div class="card">
+    <h2><svg><use href="#i-door"/></svg>Which door?</h2>
+    <p class="hint">
+      Enter one card per Domain drawn, exactly as "Select Next Destination" shows them:
+      type, level, and any <b>beacons</b>, the lines in the bar above the cards. Beacons are
+      often the whole difference between two doors. A Lv1 Combat carrying a free Blessing
+      beats a Lv2 Occurrence carrying nothing. Position matters too. Income and shopping
+      are worth far less once few Domains remain.
+    </p>
+    <div class="row">
+      <button id="addDoor" class="primary">＋ Add a card</button>
+      <label>Redraws left <input type="number" id="doorRedraws" min="0" value="0"
+             title="The Redraw counter under the cards"></label>
+      <button id="clearDoors" class="ghost">Clear</button>
+    </div>
+    <div id="doorList" class="doorcards"></div>
+    <div class="row">
+      <button id="rankDoors" class="primary" disabled><svg><use href="#i-rank"/></svg>Rank this draw</button>
+    </div>
+  </div>
+  </div>
+  <div class="col"><div id="doorResult"></div></div>
+</section>
+
+<!-- ------------------------------------------------------------ SPEND -->
+<section id="tab-spend" class="tab split">
+  <div class="col">
+  <div class="card">
+    <h2><svg><use href="#i-heat"/></svg>Workbench of Creation</h2>
+    <p class="hint">
+      Heat resets when you leave, so use it or lose it. Enhancing costs more for a rarer
+      Blessing, so the answer is the best <em>combination</em> that fits your Heat. One
+      Legendary at 3 is not automatically better than three Commons at 1. What decides
+      which ones earn the Heat is how much the upgrade helps this build, never rarity
+      alone.
+    </p>
+    <div class="row">
+      <span class="hint" style="margin:0">Heat per enhance</span>
+      <label>Common <input type="number" id="heatCommon" min="0" max="9" value="1"></label>
+      <label>Rare <input type="number" id="heatRare" min="0" max="9" value="2"></label>
+      <label>Legendary <input type="number" id="heatLegendary" min="0" max="9" value="3"></label>
+    </div>
+    <p class="hint">
+      The game files do not carry these costs. They come from play, so correct them if
+      your bench charges something else.
+    </p>
+    <button id="askWorkbench" class="primary"><svg><use href="#i-rank"/></svg>What should I enhance?</button>
+    <div id="workbenchResult"></div>
+  </div>
+  </div>
+
+  <div class="col">
+  <div class="card">
+    <h2><svg><use href="#i-store"/></svg>Store</h2>
+    <div class="row">
+      <label>Shelf
+        <select id="storeKind">
+          <option value="curio">Curio Store (Herta)</option>
+          <option value="blessing">Blessing Store</option>
+        </select>
+      </label>
+      <span class="hint" id="storeKindNote" style="margin:0"></span>
+    </div>
+    <p class="hint">
+      Type each card you can see. The price fills in from its rarity and you can correct
+      it. Walking out is the <em>default</em> answer here, not a fallback. A card has to
+      clear a bar on what it does for <em>this</em> run before it earns a recommendation,
+      and affording it is not an argument. If the store offers a refresh, enter its cost
+      and the ranking weighs refreshing against buying and against leaving.
+    </p>
+    <div class="row">
+      <span class="hint" style="margin:0">Price by rarity</span>
+      <label>Common <input type="number" id="priceCommon" min="0" max="9999" value="100"></label>
+      <label>Rare <input type="number" id="priceRare" min="0" max="9999" value="180"></label>
+      <label>Legendary <input type="number" id="priceLegendary" min="0" max="9999" value="300"></label>
+    </div>
+    <p class="hint" id="storePriceNote"></p>
+    <input id="storeSearch" placeholder="Type a Curio on the shelf, e.g. 'Sealing Wax'…" autocomplete="off">
+    <div id="storeResults" class="results"></div>
+    <div id="storeList" class="chips"></div>
+    <div class="row">
+      <label>Refresh cost <input type="number" id="storeRefresh" min="0" value="0"></label>
+      <label>Refreshes left <input type="number" id="storeRefreshLeft" min="0" value=""></label>
+      <button id="askStore" class="primary" disabled><svg><use href="#i-rank"/></svg>Buy or walk out?</button>
+    </div>
+    <div id="storeResult"></div>
+  </div>
+
+  <div class="card">
+    <h2><svg><use href="#i-spend"/></svg>Occurrence &amp; shop options</h2>
+    <p class="hint">
+      Type any line you can see on the Occurrence and the app offers the rest of that
+      event's options, so you rank the whole screen at once. Costs come from your screen,
+      because the numbers in the game files are runtime placeholders. Type them on the
+      chip<span class="ocr-only"> or paste a screenshot</span>. "Take nothing" always
+      ranks alongside the rest.
+    </p>
+    <input id="optSearch" placeholder="Type a line you can see, e.g. 'I won't fall for this again'…" autocomplete="off">
+    <div id="optResults" class="results"></div>
+    <div id="optSiblings"></div>
+    <div id="optDrop" class="dropzone" tabindex="0" hidden>
+      <svg><use href="#i-scan"/></svg>
+      <span>Paste or drop the event screen to read its costs</span>
+    </div>
+    <div id="optLines"></div>
+    <div id="optList" class="chips"></div>
+    <div class="row">
+      <label>Reroll cost <input type="number" id="refreshCost" min="0" value="0"></label>
+      <button id="askOffer" class="primary" disabled><svg><use href="#i-rank"/></svg>Weigh these</button>
+    </div>
+    <div id="offerResult"></div>
+  </div>
+  </div>
+</section>
+
+<!-- --------------------------------------------------------- WISHPOWER -->
+<section id="tab-wish" class="tab split">
+  <div class="col">
+  <div class="card">
+    <h2><svg><use href="#i-wish"/></svg>Wishpower level-up</h2>
+    <p class="hint">
+      Every Wishpower level offers a hand of Miracles. Almost all of them are called
+      "Ordinary", "Rare" or "Extraordinary Miracle", so the name tells you nothing. Pick
+      them out of your Mask's own pool by what they <em>do</em>. Reshuffling the hand ranks
+      alongside them, priced against the pool it draws from.
+    </p>
+    <div class="row">
+      <label>Wishpower Lv <input type="number" id="wishLevel" min="0" value="0"></label>
+      <label>Reshuffles left <input type="number" id="miracleResets" min="0" value="0"
+             title="Miracle resets are granted per run, not per level"></label>
+      <span class="hint" id="poolNote" style="margin:0"></span>
+      <button id="clearMiracles" class="ghost">Clear</button>
+    </div>
+    <input id="miracleFilter" placeholder="Filter the pool by effect: 'equation', 'beacon', 'fragment', 'Combat'…" autocomplete="off">
+    <div class="row" id="rarityFilter"></div>
+    <div id="miraclePool" class="poollist"></div>
+    <div id="miracleOffer" class="chips"></div>
+    <div class="row">
+      <button id="rankMiracles" class="primary" disabled><svg><use href="#i-rank"/></svg>Rank this hand</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><svg><use href="#i-door"/></svg>Which Domain to designate?</h2>
+    <p class="hint">
+      Nearly a third of Miracles hand you a second choice. "Designate 1 Domain to become
+      a Blank", "attach the beacon to a designated Domain". That choice often matters more
+      than the Miracle did. A sacrifice should land on your least valuable card, an
+      investment on your best, and the ranking flips accordingly.
+    </p>
+    <div class="row">
+      <div id="intentPick"></div>
+      <span class="hint" id="targetNote" style="margin:0"></span>
+    </div>
+    <div class="row">
+      <select id="pileType"></select>
+      <label>Lv <input type="number" id="pileLevel" min="1" max="5" style="width:60px"></label>
+      <label>beacons <input type="number" id="pileBeacons" min="0" max="6" value="0" style="width:60px"></label>
+      <button id="addPile">Add card</button>
+      <button id="clearPile" class="ghost">Clear pile</button>
+    </div>
+    <div id="pileList" class="chips"></div>
+    <div id="targetResult"></div>
+  </div>
+  </div>
+  <div class="col"><div id="miracleRanking"></div></div>
+</section>
+
+<!-- -------------------------------------------------------- RUN STATE -->
+<section id="tab-run" class="tab">
+  <div class="grid2">
+    <div class="card">
+      <h2><svg><use href="#i-run"/></svg>Paths</h2>
+      <div id="pathTable"></div>
+      <p class="hint" id="unreachableNote"></p>
+    </div>
+    <div class="card">
+      <h2><svg><use href="#i-eq"/></svg>Active now</h2>
+      <p class="hint">
+        Equations whose Path requirements you already meet, so their effect is live.
+      </p>
+      <div id="activeEq" class="eqlist"></div>
+    </div>
+    <div class="card">
+      <h2><svg><use href="#i-eq"/></svg>Could still finish</h2>
+      <p class="hint">
+        Not live yet, but the blessings you have left are enough to finish them. This
+        leaves out anything needing a Path the theme does not offer, and anything needing
+        more blessings than the run has left. What remains is what you can realistically
+        still aim at, best and closest first.
+      </p>
+      <div id="reachEq" class="eqlist"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------- OWNED -->
+<section id="tab-owned" class="tab split wide-left">
+  <div class="col">
+  <div class="card" id="ratingCard" hidden>
+    <h2><svg><use href="#i-gauge"/></svg>How this run is going</h2>
+    <p class="hint">
+      Your build scored out of 100, where 100 is roughly a strong finished run. Next to
+      it sits the same score for a <em>reference run</em> standing on the same Domain,
+      because 38 means nothing until you know whether 38 is early or late. The comparison
+      is the verdict. The absolute number only shows how it got there.
+    </p>
+    <div id="ratingBody"></div>
+  </div>
+
+  <div class="card">
+    <h2><svg><use href="#i-bag"/></svg>What I own
+      <span class="h2actions">
+        <button id="ownHistory" class="ghost">Earlier saves</button>
+        <button id="ownExport" class="ghost">Export</button>
+        <button id="ownImport" class="ghost">Import</button>
+        <input id="ownImportFile" type="file" accept="application/json,.json" hidden>
+        <button id="ownReset" class="ghost danger">Reset for a new run</button>
+        <span id="ownResetConfirm" class="confirm" hidden>
+          <span>Clear everything held?</span>
+          <button id="ownResetYes" class="ghost danger">Yes, clear it</button>
+          <button id="ownResetNo" class="ghost">Cancel</button>
+        </span>
+        <button id="ownResetUndo" class="ghost" hidden>Undo</button>
+      </span>
+    </h2>
+    <div id="historyPanel" class="histpanel" hidden>
+      <p class="hint">
+        Every save keeps what it replaced, so undo a reset or a mis-clicked × here.
+        Unlike the Undo button, this outlives the browser tab. Restoring saves too, so you
+        can come straight back and pick a different one.
+      </p>
+      <div id="historyList"></div>
+    </div>
+    <p class="hint">
+      Everything the run holds right now, resolved by name. Blessings group by Path in the
+      game's own Path order, the same order the Run state table uses, so you can read the
+      two against each other. Equations split into the live ones and the ones still short,
+      and anything your team cannot use carries a mark.
+    </p>
+    <div id="ownSummary" class="ownsummary"></div>
+    <div id="ownNotes"></div>
+    <div id="ownBody"></div>
+  </div>
+  </div>
+
+  <div class="col">
+  <div class="card sticky">
+    <h2><svg><use href="#i-decide"/></svg>Add something by hand</h2>
+    <p class="hint">
+      Most picks arrive here on their own. Rank an offer on Decide or Wishpower and press
+      Take. Use this for anything that turned up without a choice: chest drops, event
+      rewards, Trotters.
+    </p>
+    <div class="row">
+      <label>Type
+        <select id="ownKind">
+          <option value="blessing">Blessing</option>
+          <option value="curio">Curio</option>
+          <option value="weighted_curio">Weighted Curio</option>
+          <option value="equation">Equation</option>
+          <option value="miracle">Wishpower Miracle</option>
+        </select>
+      </label>
+    </div>
+    <input id="ownSearch" placeholder="Search what you already hold…" autocomplete="off">
+    <div id="ownResults" class="results"></div>
+
+    <!-- Weighted Curios are a 17-entry pool and the equip screen shows icons
+         with no names, so searching means clicking every tile in game first.
+         Browse and tick instead. -->
+    <div id="weightedPool" hidden>
+      <p class="hint">
+        All 17 in this theme, best first for the run you are in. The score combines the
+        gate against your team with what the effect does for the build. <b>Tick what you
+        have in the sockets</b>, not what you own. By late run you hold most of them, and
+        only a socketed one does anything. Ticking past your socket count takes the oldest
+        back out. A curio whose gate no character in your team matches does nothing in a
+        socket however good the effect reads, so those score 0.
+      </p>
+      <p class="hint">
+        The list sorts by that score, so the best for your team always sits at the top. A
+        highlight means <em>you have a socket free and this is the best thing for it</em>.
+        You get as many highlights as free sockets, and none once they are all filled. When
+        they are full, a note above the list says whether something else beats what you
+        have, because a swap costs a socket you have to empty first.
+      </p>
+      <div class="row">
+        <label>Sockets <input type="number" id="weightedSlots" min="0" max="5" value="2"></label>
+        <button id="weightedRescore" class="ghost">Re-evaluate</button>
+      </div>
+      <p class="hint" id="weightedStamp"></p>
+      <div id="weightedList" class="poollist"></div>
+    </div>
+
+    <div id="invPanel" hidden>
+      <h2 style="margin-top:20px"><svg><use href="#i-scan"/></svg>Scan inventory</h2>
+      <p class="hint">
+        Things arrive without you picking them: event rewards, Trotters, mask gifts. Scan
+        now and then to resync. You see exactly what changes before anything applies.
+      </p>
+      <div id="invDrop" class="dropzone" tabindex="0">
+        <svg><use href="#i-scan"/></svg>
+        <span>Paste or drop an inventory screenshot</span>
+      </div>
+      <label class="row"><input type="checkbox" id="invComplete"> the screenshot showed my entire inventory</label>
+      <div id="invResult"></div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- --------------------------------------------------------- HOW IT SCORES -->
+<!-- Every number on this tab is fetched from the modules that use it, never
+     retyped into the page. A transparency tab that drifted from the engine
+     would be wrong in the most damaging way possible: confidently, and about
+     exactly the thing the reader came here to check. -->
+<section id="tab-how" class="tab split wide-left">
+  <div class="col">
+
+  <div class="card">
+    <h2><svg><use href="#i-scale"/></svg>What a score is, and what it is not</h2>
+    <p class="hint">
+      This tool has no damage model and does not pretend to one. It reads the game's own
+      datamined numbers, tags what each card does, and adds up a handful of weighted
+      factors. That is the whole trick.
+    </p>
+    <ul class="explainlist">
+      <li><b>Scores are relative, never absolute.</b> 87 against 61 means "clearly better
+        among these three cards". It does not mean 87% optimal, and two scores from
+        different screens are not comparable.</li>
+      <li><b>Every verdict shows its working.</b> Each card lists its factors, the raw
+        0 to 1 value of each, the weight, and the points. When you disagree with a
+        recommendation, you disagree with one specific line, and that line is the one to
+        change.</li>
+      <li><b>The engine reads effect text, not names.</b> Card names in this mode carry
+        almost no information: 136 of the 286 Wishpower Miracles are literally called
+        "Ordinary Miracle" or "Rare Miracle". Everything is scored from what the card
+        says it does.</li>
+      <li><b>Anything it could not read, it says it could not read.</b> A card with too
+        little machine-readable text carries a low-confidence warning instead of a
+        confident-looking number.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><svg><use href="#i-check"/></svg>The rules the whole thing obeys</h2>
+    <p class="hint">
+      These are design invariants, not preferences. A test pins each one, because each one
+      went wrong at some point and nothing showed it.
+    </p>
+    <ol class="explainlist rules">
+      <li><b>Never confidently wrong.</b> "I'm unsure, pick one" is fine. A confident
+        verdict that is wrong is not, because it corrupts the run state and every
+        recommendation after it.</li>
+      <li><b>Skip is a ranked competitor, never a fallback.</b> If nothing beats doing
+        nothing, the answer is do nothing. Screens with no "take nothing" button still
+        have one: reshuffle at a Wishpower level-up, redraw at a waypoint.</li>
+      <li><b>Rarity never justifies a spend.</b> Value is marginal gain × relevance. A
+        Legendary on an abandoned Path loses to a Rare on the Equation you are chasing.</li>
+      <li><b>Every verdict explains itself.</b> You cannot overrule a recommendation that
+        states no reason, which defeats the point of it.</li>
+      <li><b>Concentration beats breadth.</b> Equation credit is the <em>best</em> track a
+        pick advances, not the sum over all of them. Summing rewarded exactly the
+        dilution this tool exists to prevent.</li>
+      <li class="ocr-only"><b>Scans fill in, they never apply themselves.</b> A partial
+        inventory scan never deletes anything.</li>
+      <li><b>Domains remaining drives everything positional</b>, never the Plane number.
+        The same Domain index means different things in a 13- and a 20-Domain run.</li>
+      <li><b>The build refuses to ship a dataset that fails verification.</b> Silent
+        wrongness is the failure mode the whole tool exists to avoid.</li>
+    </ol>
+  </div>
+
+  <div id="explainGroups"></div>
+
+  <div class="card" id="ex-honesty">
+    <h2><svg><use href="#i-warn"/></svg>How sure is any of this</h2>
+    <p class="hint">
+      The honest answer differs sharply by section, so each block above is labelled.
+    </p>
+    <div class="proflegend">
+      <div><span class="prov data">data</span>
+        Read out of the pinned game files. Facts, held at one exact upstream commit so
+        recommendations cannot change silently under you.</div>
+      <div><span class="prov measured">measured</span>
+        Computed from that data, or observed on a real run and reported. Not a guess, but
+        not something the game states either.</div>
+      <div><span class="prov estimate">estimate</span>
+        A guess. The <em>shape</em> is defensible. A consumable is worth less than a
+        permanent, and deck effects decay as the run runs out. Nobody has measured the
+        magnitudes.</div>
+    </div>
+    <p class="hint" style="margin-top:14px">
+      Most of what turns into a recommendation sits in that third category, and a tidy
+      table that implied otherwise would be dishonest. Nobody has validated: every weight
+      on this page, the 1.4 blessing-picks-per-Domain estimate, the store floor and its
+      multipliers, the Heat costs (players reported those, since no cost table exists
+      anywhere in the game files), the Legendary store price, beacon values, Miracle and
+      Mask weights, and the reference run the rating compares against.
+    </p>
+    <p class="hint">
+      All of it lives in <code>engine/weights.yaml</code> and the constants named beside
+      each block above. Nothing hides in code. To fix a number, run alongside a real clear,
+      note every call you disagreed with, and change whatever produced it.
+    </p>
+  </div>
+
+  </div>
+
+  <div class="col">
+  <div class="card sticky">
+    <h2><svg><use href="#i-gauge"/></svg>Right now, in your run</h2>
+    <p class="hint">
+      The same formulas, run against what you are holding. "0.35 × need" stays abstract
+      until you can see what need is at this Domain.
+    </p>
+    <div id="explainNow"></div>
+    <h2 style="margin-top:20px"><svg><use href="#i-decide"/></svg>Sections</h2>
+    <nav id="explainNav" class="explainnav"></nav>
+  </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------- CHANGELOG -->
+<!-- Read out of CHANGELOG.md at request time, never transcribed into the page,
+     for the same reason the How it scores tab reads live constants. -->
+<section id="tab-log" class="tab">
+  <div class="card">
+    <h2><svg><use href="#i-run"/></svg>What changed, and when</h2>
+    <p class="hint">
+      Every update to this site, newest first. The build you are looking at is named at
+      the top. If it does not match what a friend sees, one of you has an old copy cached
+      and a refresh fixes it.
+    </p>
+    <div id="logBuild" class="hint"></div>
+    <div id="logBody"></div>
+  </div>
+</section>
+
+<footer>
+  <span id="status"></span>
+  <span class="disclaimer">
+    Transparent heuristic scoring over datamined values, not a solved-game oracle.
+    Every score shows its working, so overrule it when you know better.
+  </span>
+</footer>
+
+<script src="static/app.js"></script>
+</body>
+</html>
