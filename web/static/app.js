@@ -701,7 +701,10 @@ function renderVerdicts(box, verdicts, heading, decorate) {
     // Which Path a Blessing is on is the first thing you check about it, so it
     // travels with the name everywhere the name appears.
     if (v.path) h.append(pathIcon(v.path));
-    h.append(el('span', null, v.target));
+    // Classed so the phone breakpoint can hand it most of the line. Unclassed,
+    // the only selector for it was "the span with no class", which is one
+    // refactor away from silently pointing at something else.
+    h.append(el('span', 'nm', v.target));
     if (v.cost) h.append(el('span', 'tag', `${fmtNum(v.cost)} ${v.currency}`));
     // A score of -98 only means "you have no Heat", which the words say better.
     h.append(broke

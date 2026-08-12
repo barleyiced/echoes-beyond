@@ -50,7 +50,21 @@
    left the mask "Rank these" button visible outside compare mode. */
 [hidden] { display: none !important; }
 
-html, body { height: 100%; }
+/* `body` deliberately has no `height: 100%`, only the `min-height` it sets
+   below. A definite height on body caps it at one viewport and the content
+   merely overflows the box, which makes body a 844px containing block on a
+   phone -- and a `position: sticky` child can only travel inside its
+   containing block. The phone tab rail therefore pinned for exactly one
+   screen and then scrolled away with everything else, which is the opposite of
+   the point on the tab you scroll furthest. Measured at -708px on a real
+   inventory before this changed. */
+html { height: 100%; }
+
+/* Mobile Safari inflates the font of any block it decides is a "main" column
+   when the page is rotated, which desyncs every fixed-px grid track below from
+   the text sitting in it. The app sets its own sizes at the phone breakpoint,
+   so opt out. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 body {
   margin: 0;
@@ -191,8 +205,14 @@ h1 {
 .split.wide-left { grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); }
 /* The results column follows as you work down a long pool list. */
 .split .sticky { position: sticky; top: 14px; }
+/* `.split.wide-left` has to be repeated here, not left to the `.split` rule.
+   A media query adds no specificity, so the two-class selector above beat the
+   one-class collapse and What I own and How it scores stayed two-column at
+   every width — a 1.75fr and a 1fr crammed into a phone, with the second
+   column parked off the right edge of the screen and the page scrolling
+   sideways to reach it. Found at 390px with the columns still side by side. */
 @media (max-width: 1180px) {
-  .split { grid-template-columns: minmax(0, 1fr); }
+  .split, .split.wide-left { grid-template-columns: minmax(0, 1fr); }
   .split .sticky { position: static; }
 }
 
@@ -1178,4 +1198,207 @@ body.no-ocr .ocr-only { display: none !important; }
   padding: 2px 9px;
   font-size: 17px;
   line-height: 1.2;
+}
+
+/* ==========================================================================
+   Phone and touch
+   --------------------------------------------------------------------------
+   Two independent questions, so two independent gates:
+
+   `max-width: 760px` is about *room*. It is where the fixed-px grid tracks
+   stop fitting, and it lines up with the tracks already narrowed above rather
+   than inventing a second phone width.
+
+   `pointer: coarse` is about *fingers*. A 24px tall button is fine with a
+   mouse and misses with a thumb, and that is true on a coarse-pointer tablet
+   at 1024px as much as on a phone. Sizing touch targets by width would fix the
+   phone and leave the tablet unchanged.
+   ========================================================================== */
+
+@media (max-width: 760px) {
+
+  /* Gutters. 22px of side padding on a 390px screen spends 11% of the width on
+     nothing, and every ranked card is text that wants it back. */
+  header { padding: 9px 13px; gap: 9px; }
+  .posbar { padding: 8px 13px; gap: 8px 13px; }
+  .tab { padding: 14px 13px 60px; }
+  .card { padding: 13px 12px; margin-bottom: 12px; }
+
+  /* The header, the tab rail and the position bar are fixed overhead on every
+     screen. At desktop padding they ate 44% of an 844px phone before a single
+     verdict appeared, and the position bar is three wrapped rows of it. The
+     text stays the size it was. Only the space around it goes. */
+  .meta { font-size: 11px; }
+  .posbar label { font-size: 10.5px; gap: 6px; }
+  .posbar .stat { gap: 6px; }
+
+  /* Under a notch the page still paints edge to edge, so the gutters take the
+     larger of the design value and whatever the cutout needs. */
+  @supports (padding: max(0px, env(safe-area-inset-left))) {
+    header, .posbar, .tabs, .tab {
+      padding-left: max(13px, env(safe-area-inset-left));
+      padding-right: max(13px, env(safe-area-inset-right));
+    }
+    .tab { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+  }
+
+  /* ---- tabs: one scrolling rail, pinned -------------------------------- */
+  /* Nine tabs wrap to four rows on a phone, which pushes the content of every
+     screen below the fold before it has said anything. One horizontal rail
+     costs a swipe and gives the height back.
+     It sticks because the alternative is scrolling a long inventory back to the
+     top to change screen, which is the single most repeated action here. The
+     background has to be opaque: the panels behind it are translucent and a
+     transparent bar reads as a rendering fault while text slides under it. */
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding: 8px 13px 0;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line-soft);
+    box-shadow: 0 6px 14px -8px rgba(0, 0, 0, .55);
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { flex: 0 0 auto; }
+  /* The digit shortcuts are a keyboard affordance. There is no keyboard. */
+  .tabs kbd { display: none; }
+
+  /* The field text stays 16px (see the coarse block) and only the box around it
+     tightens. Buttons keep their padding: they are the touch targets, and the
+     coarse block grows those rather than shrinking them. */
+  input, select, textarea { padding: 6px 9px; }
+
+  /* `background-attachment: fixed` is either ignored or repainted on every
+     scroll frame on mobile, and the gradient is decoration. Let it scroll. */
+  body { background-attachment: scroll; }
+
+  /* ---- grids that were sized for a desktop column ---------------------- */
+  /* `minmax(340px, …)` does not collapse below its own minimum, so on a 320px
+     phone auto-fit lays one 340px track into a 294px box and the page scrolls
+     sideways. One column is what auto-fit was going to pick anyway. */
+  .grid2, #ownBody, .pathgrid { grid-template-columns: minmax(0, 1fr); }
+
+  /* Name and points on one line, the reason under it. The note is the half a
+     verdict cannot lose, so it wraps rather than truncating. */
+  .factor {
+    grid-template-columns: 1fr auto;
+    gap: 2px 10px;
+  }
+  .factor .note { grid-column: 1 / -1; }
+
+  /* Rating rows: the factor name takes its own line, then the track, the
+     points and the reference sit under it. `.fnote` stays hidden, as above. */
+  .ratrow {
+    grid-template-columns: 1fr 34px 40px;
+    gap: 3px 8px;
+  }
+  .ratrow .fname { grid-column: 1 / -1; }
+
+  .rathead { gap: 12px; }
+  .ratscore .n { font-size: 34px; }
+
+  /* Waypoint targets: the note drops to its own line instead of squeezing the
+     card name to nothing. */
+  .targetrow { flex-wrap: wrap; }
+  .targetrow .nm { min-width: 0; flex: 1 1 auto; }
+  .targetrow .note { flex: 1 0 100%; }
+
+  /* A plan row and a verdict heading are both "name, then a price, a score and
+     a button", and both crushed the name to about 70px at this width. Because
+     `min-width: 0` lets a flex item shrink under its content without clipping
+     it, the name did not truncate, it *overprinted the rarity tag beside it* --
+     "L'Experience Interieure" laid across a COMMON badge. Give the name the
+     larger part of the line and let the rest wrap under it. */
+  .planrow { flex-wrap: wrap; row-gap: 7px; }
+  /* No grow on the plan row: letting the name stretch pushed the rarity tag to
+     the far edge, away from the name it labels. */
+  .planrow .nm { flex: 0 1 auto; min-width: 55%; }
+  .verdict h4 { flex-wrap: wrap; }
+  .verdict h4 .nm { flex: 1 0 55%; }
+
+  /* Two even tiles beat four ragged ones. */
+  .ownsummary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ownsummary .tile { min-width: 0; }
+
+  /* ---- tables ---------------------------------------------------------- */
+  table { font-size: 12.5px; }
+  th, td { padding: 7px 6px; }
+  /* The How it scores tables have a prose column and a real minimum width. A
+     table that overflows its card takes the whole page sideways with it, so it
+     scrolls inside its own box instead. */
+  .extable { overflow-x: auto; }
+
+  /* ---- scrolling panes ------------------------------------------------- */
+  /* A fixed pixel height set against a desktop window leaves a phone reading a
+     17 item pool through a 250px slot. Size them against the viewport. */
+  .results { max-height: 46vh; }
+  .bpicker .results { max-height: 40vh; }
+  .eqlist { max-height: 62vh; }
+  .poollist { max-height: 58vh; }
+  #weightedPool .poollist { max-height: 62vh; }
+
+  /* Already handled at 700px. Repeated here so the 700 to 760 band does not
+     keep pushing the note off the end of the position bar. */
+  .posnote { margin-left: 0; width: 100%; }
+}
+
+/* -------------------------------------------------------------- touch ---- */
+
+@media (pointer: coarse) {
+  /* ---- 16px fields, and the reason is not legibility ------------------- */
+  /* Safari zooms the whole page when you focus a field under 16px, then leaves
+     you scrolled sideways in a layout you did not ask for. It cannot be turned
+     off, and `user-scalable=no` is both ignored and hostile. Being big enough is
+     the only fix. This hangs off the pointer rather than the width because an
+     iPad does it too, at 834px, where no phone breakpoint would reach it.
+     The fields widen to match or the digits clip. */
+  input, select, textarea { font-size: 16px; }
+  input[type=number] { width: 78px; }
+  .posbar input[type=number] { width: 66px; }
+  .posbar input.num-wide { width: 104px; }
+
+  /* Roughly 40px of height on everything you are meant to hit. The compact
+     controls are the ones that were only ever sized against a cursor. */
+  .tabs button { padding: 11px 14px; }
+  .results > div { padding: 11px 10px; }
+  .poolrow { padding: 10px 9px; }
+  .ocropt, .targetrow { padding: 9px 9px; }
+  .card h2 .h2actions button { padding: 7px 11px; font-size: 11.5px; }
+  button.enh { padding: 8px 10px; font-size: 10.5px; }
+  .planrow button.done { padding: 7px 11px; }
+  .filterchip { padding: 7px 13px; }
+  .ownrow .drop { padding: 8px 11px; font-size: 18px; }
+  .exlink { padding: 9px 8px; }
+  /* Removing a card from the offer is a real action and its × was 15px across.
+     The chip loses its right padding so the button carries that space itself. */
+  .chip { padding-right: 0; }
+  .chip button { padding: 9px 11px; }
+  .introclose { padding: 7px 12px; }
+  /* Every fold head is a button you tap to open a block, whether it is a Path
+     strip or a group title. */
+  .foldhead { min-height: 38px; }
+  /* A checkbox is the whole control on the Wishpower and Weighted pools, where
+     ticking is how you record a socket. */
+  input[type=checkbox] { width: 19px; height: 19px; }
+}
+
+@media (hover: none) {
+  /* A touch leaves :hover latched on the last thing tapped, so a card stays
+     nudged sideways and a row stays lit as though it were still selected. Both
+     are cursor feedback and neither means anything without a cursor. */
+  .pick:hover { transform: none; }
+  .results > div:hover, .poolrow:hover, .ocropt:hover { background: none; border-color: transparent; }
+  /* The keyboard highlight and the real states still have to win. */
+  .results > div.active { background: var(--panel-2); border-color: var(--accent); }
+  .poolrow.held { background: var(--panel-2); border-color: var(--line-soft); }
+  .poolrow.picked, .poolrow.rec {
+    border-color: var(--accent);
+    background: linear-gradient(90deg, rgba(242,158,56,.12), transparent);
+  }
 }

@@ -25,6 +25,34 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+### Optimizations
+
+- The app now works on a phone. The tabs sit in one row you swipe across
+  instead of stacking four deep, and that row stays pinned to the top of the
+  screen, so you change tab without scrolling back up a long inventory.
+- Every field is large enough that Safari stops zooming the page when you tap
+  one. That zoom left you scrolled sideways in a layout you did not ask for.
+- Buttons, tick boxes and fold headers are sized for a thumb rather than for a
+  cursor. This applies on a tablet too, not only on a phone.
+- Ranked cards read down the screen instead of across it. A factor puts its name
+  and its points on one line and the reason underneath, at full width, so no
+  reason gets clipped. Rating rows and waypoint targets do the same.
+- The header and the position bar give back the space they were spending on a
+  desktop window. A verdict is now on screen sooner.
+- Long tables scroll inside their own card, so one wide table no longer takes
+  the whole page sideways with it.
+
+### Bug Fixes
+
+- On a narrow screen, a long card name printed straight over the rarity badge
+  next to it on Workbench plan steps and store verdicts. The name now takes the
+  larger part of the line and the price, the score and the buttons wrap under
+  it.
+- What I own and How it scores stayed in two columns on a narrow screen. Both
+  parked their second column past the right edge, so reaching the search box or
+  the section list meant scrolling the page sideways. They now stack like every
+  other tab once the window drops below 1180 pixels.
+
 ## 2026-08-11 · build 7100beea979b
 
 ### Bug Fixes
