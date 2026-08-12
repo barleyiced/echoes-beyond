@@ -25,6 +25,8 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+## 2026-08-12 · build 09014d125ce3
+
 ### Bug Fixes
 
 - On a phone, the opening paragraph of the "What this is" card ran underneath
