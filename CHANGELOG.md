@@ -25,6 +25,11 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+### Bug Fixes
+
+- On a phone, the opening paragraph of the "What this is" card ran underneath
+  the button that closes it. It now stops short of it.
+
 ## 2026-08-12 · build 1f34a3b3a0bc
 
 ### Optimizations

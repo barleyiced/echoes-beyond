@@ -1346,6 +1346,12 @@ body.no-ocr .ocr-only { display: none !important; }
   /* Already handled at 700px. Repeated here so the 700 to 760 band does not
      keep pushing the note off the end of the position bar. */
   .posnote { margin-left: 0; width: 100%; }
+
+  /* The intro's close button is absolutely positioned, so it takes no space and
+     the paragraph reflows straight under it. On a wide screen the first line
+     ends long before it. On a phone it does not, and the first words a new
+     visitor reads sit under a button. Give that one paragraph the room back. */
+  .intro p:first-of-type { padding-right: 42px; }
 }
 
 /* -------------------------------------------------------------- touch ---- */
