@@ -25,6 +25,44 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+## 2026-09-08 · build 4339433425fd
+
+### Notices
+
+- The game data now comes from patch 4.5. Arcadian Chronicles grew instead of
+  being replaced, so your run carries over and everything you have recorded
+  still resolves. The theme gained 24 Equations, 25 Curios, 9 weighted Curios
+  and 5 Masks. The 144 Blessings did not change at all.
+- Recommendations have moved, because the Equation catalog is half again as
+  large. The clearest case is Propagation. Patch 4.5 added Equations on that
+  Path that sit closer to a standing start, so pivoting onto Propagation
+  part-way through a run now scores much nearer to feeding the Path you are
+  already committed to. The penalty for scattering has not changed. The pivot
+  itself got better.
+
+### New Features
+
+- The five Masks that 4.5 added are scored: Snowy Owl, Gluttonous, Trader,
+  Servis and Idea Guy. Each reads its Wishpower income from its own text, the
+  way the other nine do. The Idea Guy Mask turns into another Mask, so the tool
+  says its income is whatever you convert into rather than naming a rate it
+  cannot know.
+- The Door tab scores the new Vault Domain. You fight Trotters there and the
+  payout grows with the Vault level, so it is rated as a reward Domain that
+  charges you a fight. Treat that rating as an estimate, like the rest of the
+  Domain table.
+
+### Bug Fixes
+
+- The Weighted Curio list said "All 17 in this theme" while showing 26, and the
+  scoring page said the Wishpower pool holds 286 Miracles when it holds 336.
+  Both counts were typed into the page by hand, so patch 4.5 left them behind.
+  They now come from the game data and cannot go stale again.
+- Mask Miracle lines that name a Curio now show the Curio. Several Servis Mask
+  lines are built around a single Curio, and 4.5 writes that reference in a
+  form the tool could not read. You would have been asked to choose between
+  lines that named nothing.
+
 ## 2026-08-12 · build 09014d125ce3
 
 ### Bug Fixes

@@ -91,7 +91,17 @@ def meta(body: dict) -> dict:
         "characters": ds["characters"],
         "run_lengths": ds["run_lengths"],
         "counts": {k: len(ds[k]) for k in
-                   ("blessings", "equations", "curios", "weighted_curios", "masks")},
+                   ("blessings", "equations", "curios", "weighted_curios", "masks",
+                    "mask_gifts")},
+        # The Wishpower copy quotes both of these ("136 of the 336 are literally
+        # called Ordinary Miracle"), and it is the argument for reading effect
+        # text rather than names, so a stale figure argues the point with a wrong
+        # number. Counted here for the same reason `engine/explain.py` reads live
+        # constants: 4.5 moved the total from 286 to 336 and the sentence in
+        # `index.html` went on claiming 286.
+        "generic_miracle_names": sum(
+            1 for g in ds["mask_gifts"]
+            if g["name"] in ("Ordinary Miracle", "Rare Miracle", "Extraordinary Miracle")),
     }
 
 

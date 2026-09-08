@@ -45,17 +45,24 @@ TOURN = "Tourn3"  # Arcadian Chronicles
 # descriptions — it is the 4.0 rebalance of the previous theme. Building against
 # the wrong series yields real names with stale numbers, so this is verified
 # rather than assumed (see _detect_generation).
+# Patch 4.5 expanded Arcadian Chronicles rather than replacing it: the theme is
+# still series 617 / generation 3 over the same 8 Paths, and the blessing list
+# did not move at all. Everything built *around* the blessings grew — 24 more
+# Equations, 25 more Curios, 9 more weighted Curios and 5 more Masks with the
+# Wishpower pool and talents that come with them. These are counted truths from
+# the 4.5 tables, not targets: if a build disagrees, find out what upstream did
+# before changing a number here.
 EXPECT = {
     "paths": 10,
     "theme_paths": 8,        # Arcadian Chronicles drops Preservation and Abundance
-    "blessings": 144,
-    "equations": 80,
+    "blessings": 144,        # unchanged by 4.5
+    "equations": 104,
     "path_echo": 8,
-    "curios": 235,
-    "weighted_curios": 17,
-    "masks": 9,
-    "mask_gifts": 286,       # Wishpower Miracles, across every Mask pool
-    "mask_talents": 18,
+    "curios": 260,
+    "weighted_curios": 26,
+    "masks": 14,
+    "mask_gifts": 336,       # Wishpower Miracles, across every Mask pool
+    "mask_talents": 24,
 }
 
 
@@ -668,7 +675,15 @@ def build_masks(textmap: dict) -> tuple[list[dict], list[dict], list[dict]]:
             "group": groups.get(shapes.get(r, troles, Role.GROUP), ""),
             "level": shapes.get(r, troles, Role.LEVEL, 1),
             "name": plain(shapes.text(r, troles, Role.NAME, textmap)),
-            "effect": render(shapes.text(r, troles, Role.EFFECT, textmap), p),
+            # `bare=True` for the same reason the curios have it: this table
+            # writes most of its numbers as `#1[i]` but not all of them, and a
+            # spec-less `#1` matches no PARAM_RE. Patch 4.5 added a fourth level
+            # to all six talent groups and one of them ("Living", 12004) uses the
+            # bare form, so it shipped as "obtains #1 refresh chance(s)". Unlike
+            # the event options, a talent's ParamList really is the source of its
+            # numbers — every spec'd ref on this table resolves from it — so
+            # substituting here reads a value rather than inventing one.
+            "effect": render(shapes.text(r, troles, Role.EFFECT, textmap), p, bare=True),
             "params": p,
         })
 
@@ -707,7 +722,7 @@ def build_masks(textmap: dict) -> tuple[list[dict], list[dict], list[dict]]:
 # --------------------------------------------------------------------------
 
 ROOM_REF_RE = re.compile(r'#\{(room_comp_type|room_attribute):(\d+)\}')
-CURIO_REF_RE = re.compile(r'#\{miracle:excel_(\d+)\}')
+CURIO_REF_RE = re.compile(r'#\{miracle:(excel_)?(\d+)\}')
 
 
 def link_room_refs(rows: list[dict], domains: list[dict], beacons: list[dict],
@@ -771,32 +786,41 @@ def link_room_refs(rows: list[dict], domains: list[dict], beacons: list[dict],
     return unresolved
 
 
-def link_curio_refs(curios: list[dict], fields: tuple[str, ...] = ("desc", "search_text")) -> int:
-    """Resolve `#{miracle:excel_3}` — a curio naming another curio.
+def link_curio_refs(rows: list[dict], curios: list[dict] | None = None,
+                    fields: tuple[str, ...] = ("desc", "search_text")) -> int:
+    """Resolve `#{miracle:excel_3}` and `#{miracle:9258}` — text naming a curio.
 
-    The digit is a 1-based index into the effect row's `ParamList`, and the value
-    sitting there is a curio id rather than a number: `Ambergris Cheese` param 3
-    is 9063, which is `King of Sponges`. Eight references across six curios, and
-    every one of them is the *outcome* — what this upgrades into, or which three
-    curios it hands you — so leaving them raw hides the entire payoff.
+    Two shapes, and what differs is where the id comes from. In the `excel_`
+    form the digit is a 1-based index into the row's own `ParamList` and the
+    value sitting there is a curio id rather than a number: `Ambergris Cheese`
+    param 3 is 9063, which is `King of Sponges`. In the bare form the digit *is*
+    the curio id. Either way the reference is the payoff — what this upgrades
+    into, which three curios it hands you, or the Curio a whole Mask is built
+    around — so leaving one raw hides the entire reason to take the card.
+
+    `curios` is the table ids resolve against, defaulting to `rows` because a
+    curio naming another curio is the case this started as. The Mask gifts need
+    the two kept apart: their own ids run 101-828, so looking 9258 up among
+    themselves would find nothing and silently leave every reference raw.
 
     Runs before `link_room_refs`, so the names it substitutes are in the text by
     the time tags are re-derived. Returns the number left unresolved.
     """
-    names = {c["id"]: c["name"] for c in curios}
+    names = {c["id"]: c["name"] for c in (rows if curios is None else curios)}
     unresolved = 0
 
-    for c in curios:
+    for c in rows:
         params = c.get("params") or []
         refs: list[int] = []
-        missing: set[int] = set()
+        missing: set[str] = set()
 
         def sub(m: re.Match) -> str:
-            i = int(m.group(1))
-            v = params[i - 1] if 0 < i <= len(params) else None
+            n = int(m.group(2))
+            # excel_N indexes this row's ParamList; a bare N is the id itself.
+            v = (params[n - 1] if 0 < n <= len(params) else None) if m.group(1) else n
             name = names.get(int(v)) if isinstance(v, (int, float)) else None
             if not name:
-                missing.add(i)
+                missing.add(m.group(0))
                 return m.group(0)
             if int(v) not in refs:
                 refs.append(int(v))
@@ -952,6 +976,20 @@ def verify(ds: dict) -> list[str]:
         problems.append(
             f"options: {len(leaked)} unrendered placeholders, e.g. id {leaked[0]}")
 
+    # Talents had no check either, and 4.5 is what that cost: the patch added a
+    # level 4 to every group and one arrived with a bare `#1` the renderer was
+    # not opted in to, so it built as "obtains #1 refresh chance(s)". No UI reads
+    # this collection today (`mask_talents` is not in `dataset.KINDS`), which is
+    # the only reason it was not on a card — the dataset is still the thing every
+    # surface is built from, and a wrong number waiting in it is worth the check.
+    # Checked for any `#` like the options are. Nothing on this table quotes the
+    # game's own `#`-stylised names, unlike the curio flavour text, so there is
+    # nothing here for that to catch by mistake.
+    leaked = [t["id"] for t in ds["mask_talents"] if "#" in (t.get("effect") or "")]
+    if leaked:
+        problems.append(
+            f"mask_talents: {len(leaked)} unrendered placeholders, e.g. id {leaked[0]}")
+
     if {p["id"] for p in ds["paths"]} != set(range(120, 130)):
         problems.append("paths: expected ids 120..129")
 
@@ -1068,6 +1106,7 @@ def main() -> None:
         c["elements"] = elements_in(c["desc"])
 
     left = link_curio_refs(curios)
+    left += link_curio_refs(gifts, curios, fields=("effect",))
     left += link_room_refs(gifts, domain_types, beacons)
     left += link_room_refs(curios, domain_types, beacons,
                            fields=("desc", "search_text"), refresh=_refresh_curio)

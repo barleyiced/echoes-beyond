@@ -539,12 +539,13 @@
     <input id="ownSearch" placeholder="Search what you already hold…" autocomplete="off">
     <div id="ownResults" class="results"></div>
 
-    <!-- Weighted Curios are a 17-entry pool and the equip screen shows icons
+    <!-- Weighted Curios are a small pool and the equip screen shows icons
          with no names, so searching means clicking every tile in game first.
          Browse and tick instead. -->
     <div id="weightedPool" hidden>
       <p class="hint">
-        All 17 in this theme, best first for the run you are in. The score combines the
+        All <span id="weightedTotal">17</span> in this theme, best first for the run you
+        are in. The score combines the
         gate against your team with what the effect does for the build. <b>Tick what you
         have in the sockets</b>, not what you own. By late run you hold most of them, and
         only a socketed one does anything. Ticking past your socket count takes the oldest
@@ -607,7 +608,8 @@
         recommendation, you disagree with one specific line, and that line is the one to
         change.</li>
       <li><b>The engine reads effect text, not names.</b> Card names in this mode carry
-        almost no information: 136 of the 286 Wishpower Miracles are literally called
+        almost no information: <span id="genericMiracles">136</span> of the
+        <span id="miracleTotal">286</span> Wishpower Miracles are literally called
         "Ordinary Miracle" or "Rare Miracle". Everything is scored from what the card
         says it does.</li>
       <li><b>Anything it could not read, it says it could not read.</b> A card with too

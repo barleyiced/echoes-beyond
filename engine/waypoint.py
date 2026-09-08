@@ -39,6 +39,12 @@ SUPPLIES: dict[str, set[str]] = {
     "Escapade: Surprise Occurrence": {"choice", "mixed"},
     "Forge": {"weighted", "enhance"},
     "Conversion": {"reset", "enhance"},
+    # Added in 4.5. You fight Trotters for the reward, and the payout scales
+    # with the Vault level, which the Gluttonous Mask raises by deleting
+    # Domains. Modelled as a reward Domain rather than a combat one: the
+    # fight is the price, not the point. What one is worth therefore varies
+    # by Mask more than this table can express, so it stays a flat profile.
+    "Vault": {"fragments", "curio"},
     "Blank": set(),
 }
 

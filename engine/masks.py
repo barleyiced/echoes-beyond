@@ -35,7 +35,16 @@ from engine.state import RunState
 # How a Mask earns Wishpower, read from its own description.
 INCOME_MODELS = {
     "domain_flat": (
-        [r"upon entering a domain, gain", r"when entering a domain, obtain \d+ wishpower"],
+        [r"upon entering a domain, gain", r"when entering a domain, obtain \d+ wishpower",
+         # 4.5 wording. Gluttonous, Servis and Trader all open with a flat
+         # per-Domain payment and then add a conditional bonus on top, which is
+         # the shape Mechatron already had, so they classify the same way: on
+         # the part you can count on. Trader matters most here. Without this
+         # pattern it fell through to "fragments" on its *secondary* income and
+         # scored 0.50 while holding a guaranteed 40 a Domain, which reads it as
+         # the same kind of Mask as Fortune Cat. Fortune Cat has no flat base at
+         # all, and that difference is the whole point of the two models.
+         r"when entering a domain, gains \d+ wishpower"],
         0.95, "flat Wishpower every Domain, the most dependable income"),
     "domain_level": (
         [r"domain of lv\.?\s*1/2/3/4/5"],
@@ -55,6 +64,17 @@ INCOME_MODELS = {
     "removal": (
         [r"domain removed"],
         0.45, "Wishpower only when you remove Domains, which is narrow, but this Mask does it constantly"),
+    # Added in 4.5. Pays on either direction of a deck edit rather than on
+    # removal alone, and the Mask carrying it reshapes the deck all run, so
+    # it earns more often than "removal" does.
+    "deck_churn": (
+        [r"when gaining or losing a domain"],
+        0.60, "Wishpower whenever you add or remove a Domain, and this Mask does both all run"),
+    # Added in 4.5. The Idea Guy Mask turns into another Mask, so its income
+    # is that Mask's income. Naming a rate here would invent one.
+    "conversion": (
+        [r"based on the mask after conversion"],
+        0.55, "Wishpower comes from whichever Mask you convert into, so the rate depends on that choice"),
 }
 
 # Paths whose characters provide sustain. Note these Paths have no *blessings*

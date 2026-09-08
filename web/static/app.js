@@ -3000,6 +3000,15 @@ async function boot() {
     ` · patch ${patch} · ${META.counts.blessings} blessings · ${META.counts.equations} equations · ` +
     `${META.counts.curios} curios · ${META.counts.masks} masks`));
 
+  // Counts quoted in the static copy, filled from the dataset rather than typed
+  // into the HTML. 4.5 grew the weighted pool from 17 to 26 and the Wishpower
+  // pool from 286 to 336, and both sentences went on stating the old figure
+  // while the lists beside them showed the new one.
+  const fill = (id, n) => { const e = $('#' + id); if (e) e.textContent = n; };
+  fill('weightedTotal', META.counts.weighted_curios);
+  fill('miracleTotal', META.counts.mask_gifts);
+  fill('genericMiracles', META.generic_miracle_names);
+
   // Which build a friend is actually on. The patch number above says which game
   // data; this says which copy of the app, so "did my update reach you?" has an
   // answer that is not a guess.
