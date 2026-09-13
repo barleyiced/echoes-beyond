@@ -61,10 +61,6 @@
   <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
     <path d="M12 4.5l8.5 15h-17z" stroke-linejoin="round"/><path d="M12 10v4.2M12 17.2v.1" stroke-linecap="round"/>
   </symbol>
-  <symbol id="i-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-    <path d="M4 8V5.5A1.5 1.5 0 015.5 4H8M16 4h2.5A1.5 1.5 0 0120 5.5V8M20 16v2.5a1.5 1.5 0 01-1.5 1.5H16M8 20H5.5A1.5 1.5 0 014 18.5V16" stroke-linecap="round"/>
-    <path d="M4 12h16" stroke-linecap="round" opacity=".6"/>
-  </symbol>
   <symbol id="i-rank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
     <path d="M12 3l2.6 5.6 6.1.8-4.5 4.2 1.2 6L12 16.8 6.6 19.6l1.2-6-4.5-4.2 6.1-.8z" stroke-linejoin="round"/>
   </symbol>
@@ -241,21 +237,12 @@
       <button id="clearOffer" class="ghost">Clear</button>
     </div>
     <p class="hint">
-      Type any part of a name. Clipped text works<span class="ocr-only">, exactly as it
-      does when read from a screenshot</span>. When several entries share a prefix, this
-      asks you which one rather than guessing.
+      Type any part of a name. Clipped text works, and so does dropping an accent or an
+      apostrophe. When several entries share a prefix, this asks you which one rather
+      than guessing.
     </p>
     <input id="offerSearch" placeholder="Search the offered option…" autocomplete="off">
     <div id="offerResults" class="results"></div>
-
-    <div id="ocrPanel" hidden>
-      <div id="dropzone" class="dropzone" tabindex="0">
-        <svg><use href="#i-scan"/></svg>
-        <span>Paste a screenshot (Ctrl+V) or drop an image</span>
-        <span style="color:var(--dimmer);font-size:11.5px">Fills in the options for you to confirm one by one</span>
-      </div>
-      <div id="ocrCards"></div>
-    </div>
 
     <div id="offerList" class="chips"></div>
     <div class="row">
@@ -365,21 +352,17 @@
       Type any line you can see on the Occurrence and the app offers the rest of that
       event's options, so you rank the whole screen at once. Costs come from your screen,
       because the numbers in the game files are runtime placeholders. Type them on the
-      chip<span class="ocr-only"> or paste a screenshot</span>. "Take nothing" always
+      chip. "Take nothing" always
       ranks alongside the rest.
     </p>
     <input id="optSearch" placeholder="Type a line you can see, e.g. 'I won't fall for this again'…" autocomplete="off">
     <div id="optResults" class="results"></div>
     <div id="optSiblings"></div>
-    <div id="optDrop" class="dropzone" tabindex="0" hidden>
-      <svg><use href="#i-scan"/></svg>
-      <span>Paste or drop the event screen to read its costs</span>
-    </div>
-    <div id="optLines"></div>
     <div id="optList" class="chips"></div>
     <div class="row">
       <label>Reroll cost <input type="number" id="refreshCost" min="0" value="0"></label>
       <button id="askOffer" class="primary" disabled><svg><use href="#i-rank"/></svg>Weigh these</button>
+      <button id="clearOptions" class="ghost">Clear</button>
     </div>
     <div id="offerResult"></div>
   </div>
@@ -567,19 +550,6 @@
       <div id="weightedList" class="poollist"></div>
     </div>
 
-    <div id="invPanel" hidden>
-      <h2 style="margin-top:20px"><svg><use href="#i-scan"/></svg>Scan inventory</h2>
-      <p class="hint">
-        Things arrive without you picking them: event rewards, Trotters, mask gifts. Scan
-        now and then to resync. You see exactly what changes before anything applies.
-      </p>
-      <div id="invDrop" class="dropzone" tabindex="0">
-        <svg><use href="#i-scan"/></svg>
-        <span>Paste or drop an inventory screenshot</span>
-      </div>
-      <label class="row"><input type="checkbox" id="invComplete"> the screenshot showed my entire inventory</label>
-      <div id="invResult"></div>
-    </div>
   </div>
   </div>
 </section>
@@ -638,8 +608,6 @@
       <li><b>Concentration beats breadth.</b> Equation credit is the <em>best</em> track a
         pick advances, not the sum over all of them. Summing rewarded exactly the
         dilution this tool exists to prevent.</li>
-      <li class="ocr-only"><b>Scans fill in, they never apply themselves.</b> A partial
-        inventory scan never deletes anything.</li>
       <li><b>Domains remaining drives everything positional</b>, never the Plane number.
         The same Domain index means different things in a 13- and a 20-Domain run.</li>
       <li><b>The build refuses to ship a dataset that fails verification.</b> Silent

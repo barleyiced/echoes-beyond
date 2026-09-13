@@ -138,6 +138,18 @@ def _equation_group() -> dict:
         "source": "engine/equations.py",
         "tables": [
             _table(
+                "What an Equation asks for in a run, by tier.",
+                ["Tier", "Main Path", "Second Path"],
+                [[k, v[0], v[1]] for k, v in equations.RUN_SCALED_REQUIREMENT.items()]
+                + [["Boundary (PathEcho)", 16, "none"]],
+                "The game files carry a lower number, and a run raises it. The archive read "
+                "outside a run shows the file's figure, and the same Equation inside a "
+                "Difficulty 5 run asks for these. Reading the file's figure had the tool "
+                "calling 29 of 104 requirements met on a real save where the game said 13. "
+                "Boundary Equations stay on their file figure, because none has been seen "
+                "on a run screen and guessing one would invent a number.",
+            ),
+            _table(
                 "What each Equation tier is worth.",
                 ["Tier", "Value"],
                 [["Boundary (PathEcho)" if k == "PathEcho" else k, v]

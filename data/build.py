@@ -25,7 +25,7 @@ from data import shapes
 from data.fetch import load_table, load_textmap, CACHE, PIN_FILE
 from data.shapes import Role
 from data.tags import elements_in, mechanic_terms, tag_text
-from data.text import plain, render
+from data.text import index_text, plain, render
 
 HERE = Path(__file__).parent
 DATASET = HERE / "dataset.json"
@@ -851,16 +851,19 @@ def build_index(dataset: dict) -> None:
     con.execute("""
         CREATE VIRTUAL TABLE entries USING fts5(
             kind, entry_id UNINDEXED, name, desc, path, rarity,
-            tokenize='porter unicode61'
+            tokenize='unicode61'
         )
     """)
     rows = []
     for kind in ("blessings", "equations", "curios", "weighted_curios", "masks",
                  "options", "mask_gifts"):
         for e in dataset[kind]:
+            # Folded going in, folded going out. `search()` folds the query
+            # with the same function, which is what lets you type "doden" and
+            # reach "Sygdommen til Døden".
             rows.append((
-                e["kind"], str(e["id"]), e.get("name", ""),
-                e.get("desc", "") or e.get("effect", ""),
+                e["kind"], str(e["id"]), index_text(e.get("name", "")),
+                index_text(e.get("desc", "") or e.get("effect", "")),
                 e.get("path", ""), e.get("rarity", ""),
             ))
     con.executemany("INSERT INTO entries VALUES (?,?,?,?,?,?)", rows)

@@ -55,6 +55,59 @@ def unheld_discount(progress: float) -> float:
     return UNHELD_FLOOR + (1.0 - UNHELD_FLOOR) * (1.0 - min(1.0, max(0.0, progress)))
 
 
+# What an Equation actually asks for *inside a run*, by rarity.
+#
+# The pinned `RogueTournFormula` columns are the **base** requirement, and a run
+# raises them. Settled 2026-09-13 against the in-game Equation archive read
+# outside a run: six entries (Eternal Sprint, Hero of Dejection, Gloaming Grand
+# Theater, Useful Scholar, Soapbox Knight, Clean Slay) show 4/2, 4/2, 6/4, 6/4,
+# 2/2 and 2/2, matching the pinned table exactly. The same Equations inside a
+# Difficulty 5 run read 6/4, 6/4, 9/6, 9/6, 3/3 and 3/3.
+#
+# So the dataset is right and `data/build.py` needs nothing. The correction
+# belongs here, over the base, which is why this is a scoring-time table and not
+# a build-time one.
+#
+# Before this, `all_status` called **29 of 104** requirements met on a real save
+# where the game called it 13. That figure feeds `progress_credit`, the heaviest
+# factor on any card, so the tool was not merely incomplete about Equations, it
+# was confidently wrong about them.
+#
+# Provenance is `measured`, not `data`. Every in-run sample is one Difficulty 5
+# run, which is the only difficulty this tool is aimed at and the only one the
+# user plays. What *selects* the modifier is unknown — difficulty is the obvious
+# candidate and the only one with evidence, and Plane and Mask are not ruled out.
+# `run_requirements` therefore takes the run, so a difficulty key can be added
+# without touching a caller.
+#
+# PathEcho is deliberately absent. The boundary Equations have never been seen on
+# an in-run screen, a single-requirement rarity need not follow the two-
+# requirement rule, and guessing would invent a number. They stay on the base 16.
+RUN_SCALED_REQUIREMENT = {
+    "Rare": (3, 3),
+    "Epic": (6, 4),
+    "Legendary": (9, 6),
+}
+
+
+def run_requirements(equation: dict, run=None) -> list[int]:
+    """The Path counts this Equation asks for in a run, in `requires` order.
+
+    Falls back to the pinned base for any rarity the table does not cover, which
+    today means PathEcho and anything a future patch adds. A rarity nobody has
+    photographed reads as its base rather than as a guess.
+    """
+    base = [r["count"] for r in equation["requires"]]
+    scaled = RUN_SCALED_REQUIREMENT.get(equation["rarity"])
+    if not scaled or len(scaled) != len(base):
+        return base
+    return list(scaled)
+
+
+def run_total_required(equation: dict, run=None) -> int:
+    return sum(run_requirements(equation, run))
+
+
 @dataclass
 class EquationStatus:
     equation: dict
@@ -78,7 +131,12 @@ class EquationStatus:
                              else self.equation["rarity"]),
             "is_boundary": self.equation["is_boundary"],
             "desc": self.equation["desc"],
-            "requires": self.equation["requires"],
+            # The run's figure, not the pinned base. This list is read straight
+            # off the Run state table against the game's own screen, so showing
+            # the base here would contradict the thing it is checked against.
+            "requires": [dict(r, count=n) for r, n in
+                         zip(self.equation["requires"], run_requirements(self.equation))],
+            "base_requires": self.equation["requires"],
             "distance": self.distance,
             "missing": self.missing,
             "active": self.active,
@@ -93,8 +151,8 @@ def status_for(equation: dict, path_counts: dict[str, int],
     in_theme = in_theme if in_theme is not None else set(dataset.paths_in_theme())
     missing: dict[str, int] = {}
     blocked: list[str] = []
-    for req in equation["requires"]:
-        path, need = req["path"], req["count"]
+    for req, need in zip(equation["requires"], run_requirements(equation)):
+        path = req["path"]
         if path not in in_theme:
             blocked.append(path)
         have = path_counts.get(path, 0)
@@ -150,7 +208,7 @@ def _track_value(st: EquationStatus, picks_left: int) -> float:
     """
     if st.distance == 0:
         return st.value
-    proximity = 1.0 - st.distance / max(1, st.equation["total_required"])
+    proximity = 1.0 - st.distance / max(1, run_total_required(st.equation))
     budget = 1.0 - min(1.0, st.distance / max(1, picks_left))
     return st.value * (0.35 + 0.65 * proximity) * (0.40 + 0.60 * budget)
 

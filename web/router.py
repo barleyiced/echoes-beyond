@@ -521,80 +521,6 @@ def explain_scoring(body: dict) -> dict:
     return explain.payload(_run(body, key=None))
 
 
-# ----------------------------------------------------------------------- OCR
-# Kept in the router so route parity holds, but every one of these degrades
-# cleanly when the engine is absent — which is the hosted build's normal state,
-# not an error (WEB-PLAN.md Phase 3).
-
-def _ocr_module():
-    """The OCR engine, or a clean 503.
-
-    On the hosted build `resolve/` is not shipped at all, so this is an
-    ImportError rather than a missing model file. Either way the answer the UI
-    needs is "unavailable", not a traceback — see WEB-PLAN.md Phase 3.
-    """
-    try:
-        from resolve import ocr
-    except ImportError:
-        raise ApiError(503, "This build cannot read screenshots.")
-    return ocr
-
-
-def ocr_status(body: dict) -> dict:
-    try:
-        return {"available": _ocr_module().available()}
-    except Exception:
-        return {"available": False}
-
-
-def _ocr_bytes(body: dict) -> bytes:
-    ocr = _ocr_module()
-    if not ocr.available():
-        raise ApiError(503, "The OCR engine is not installed.")
-    data = body.get("data") or b""
-    if not data:
-        raise ApiError(400, "empty upload")
-    return data
-
-
-def ocr_inventory(body: dict) -> dict:
-    """Scan an inventory screenshot. Returns findings only — nothing is applied."""
-    data = _ocr_bytes(body)
-    try:
-        return _ocr_module().read_inventory(data)
-    except ApiError:
-        raise
-    except Exception as e:
-        raise ApiError(422, f"could not read image: {e}")
-
-
-def ocr_options(body: dict) -> dict:
-    """Read an Occurrence or shop screen, including the live costs shown on it."""
-    data = _ocr_bytes(body)
-    try:
-        return {"lines": _ocr_module().read_options(data)}
-    except ApiError:
-        raise
-    except Exception as e:
-        raise ApiError(422, f"could not read image: {e}")
-
-
-def ocr_offer(body: dict) -> dict:
-    """Read an offer screenshot into candidates awaiting confirmation.
-
-    Results are always returned as candidate lists, never applied directly — a
-    wrong auto-resolve corrupts the run state silently, which is the failure
-    this tool exists to avoid.
-    """
-    data = _ocr_bytes(body)
-    try:
-        return {"cards": _ocr_module().read_offer(data, kind=body.get("kind", "blessing"))}
-    except ApiError:
-        raise
-    except Exception as e:                   # a bad crop should not 500 the app
-        raise ApiError(422, f"could not read image: {e}")
-
-
 # ------------------------------------------------------------------ dispatch
 
 ROUTES: dict[str, Callable[[dict], Any]] = {
@@ -624,10 +550,6 @@ ROUTES: dict[str, Callable[[dict], Any]] = {
     "/api/domains": domains,
     "/api/explain": explain_scoring,
     "/api/changelog": changelog,
-    "/api/ocr/status": ocr_status,
-    "/api/ocr/inventory": ocr_inventory,
-    "/api/ocr/options": ocr_options,
-    "/api/ocr": ocr_offer,
 }
 
 

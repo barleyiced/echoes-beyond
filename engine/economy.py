@@ -180,7 +180,8 @@ def relevance(entry: dict, run: RunState) -> tuple[float, list[str]]:
             reasons.append(f"{path} already powers {best.equation['name']}")
         elif tracked:
             best = min(tracked, key=lambda s: s.distance)
-            closeness = 1.0 - min(1.0, best.distance / max(1, best.equation["total_required"]))
+            closeness = 1.0 - min(1.0, best.distance
+                                  / max(1, equations.run_total_required(best.equation)))
             score += 0.35 * best.value * closeness
             reasons.append(f"{path} is {best.distance} from {best.equation['name']}")
         else:

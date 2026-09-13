@@ -9,6 +9,8 @@ import sqlite3
 from functools import lru_cache
 from pathlib import Path
 
+from data.text import search_tokens
+
 DATA = Path(__file__).resolve().parent.parent / "data"
 DATASET = DATA / "dataset.json"
 DB = DATA / "dataset.db"
@@ -91,10 +93,15 @@ def search(query: str, kind: str | None = None, limit: int = 20) -> list[dict]:
     try:
         # FTS5 treats ':', '*', '^', '-', '(' and quotes as query syntax, and DU
         # names are full of colons ("Enlightenment: Wavebind"). Pasting a real
-        # name would otherwise return nothing, so strip the tokens down to
-        # alphanumerics and quote them.
-        terms = [re.sub(r"[^0-9A-Za-z]+", "", t) for t in query.split()]
-        terms = [t for t in terms if t]
+        # name would otherwise return nothing, so the query is folded and split
+        # into plain word tokens, then quoted.
+        #
+        # `search_tokens` both ASCII-folds and *splits*, and the split is the
+        # half that used to be missing: the old code deleted the separator, so
+        # "Ever-Peaceful" became one token the index never holds and every
+        # hyphenated name was unreachable even pasted whole. The index is folded
+        # with the same function at build time, so the two sides always agree.
+        terms = search_tokens(query)
         if not terms:
             return []
         # Prefix-match the final token so partial typing behaves like truncation.

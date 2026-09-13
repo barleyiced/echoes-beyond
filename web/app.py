@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -32,12 +32,6 @@ def call(path: str, body: dict | None = None):
         return dispatch(path, body or {})
     except ApiError as e:
         raise HTTPException(e.status, e.detail)
-
-
-async def upload(file: UploadFile) -> bytes:
-    if file is None:
-        raise HTTPException(400, "empty upload")
-    return await file.read()
 
 
 # ------------------------------------------------------------------ schemas
@@ -315,24 +309,6 @@ def api_changelog():
     return call("/api/changelog")
 
 
-@app.get("/api/ocr/status")
-def api_ocr_status():
-    return call("/api/ocr/status")
-
-
-@app.post("/api/ocr/inventory")
-async def api_ocr_inventory(file: UploadFile = File(...)):
-    return call("/api/ocr/inventory", {"data": await upload(file)})
-
-
-@app.post("/api/ocr/options")
-async def api_ocr_options(file: UploadFile = File(...)):
-    return call("/api/ocr/options", {"data": await upload(file)})
-
-
-@app.post("/api/ocr")
-async def api_ocr(kind: str = "blessing", file: UploadFile = File(...)):
-    return call("/api/ocr", {"data": await upload(file), "kind": kind})
 
 
 @app.get("/")

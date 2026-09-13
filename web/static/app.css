@@ -940,64 +940,26 @@ button.doneall { margin-top: 11px; width: 100%; justify-content: center; }
 
 /* -------------------------------------------------------------- scan/OCR */
 
-.dropzone {
-  border: 1.5px dashed var(--line); border-radius: var(--r-sm);
-  padding: 20px; text-align: center; color: var(--dim); font-size: 12.5px;
-  cursor: pointer; display: grid; gap: 5px; justify-items: center;
-  transition: border-color .18s, background .18s, color .18s;
-  margin-top: 10px;
-}
-.dropzone svg { width: 22px; height: 22px; opacity: .55; }
-.dropzone:hover, .dropzone.hot {
-  border-color: var(--accent); color: var(--text); background: rgba(242,158,56,.06);
-}
-.dropzone.hot svg { opacity: 1; color: var(--accent); }
-
-.ocrcard {
-  border: 1px solid var(--line-soft); border-radius: var(--r-sm);
-  padding: 11px; margin-top: 9px; background: var(--panel-2);
-}
-.ocrcard.needs { border-color: rgba(242,158,56,.5); }
-.ocrcard .seen { font-size: 11.5px; color: var(--dim); margin-bottom: 7px; }
-.ocrcard .seen code {
-  background: rgba(255,255,255,.07); padding: 2px 6px; border-radius: 4px;
-  font-size: 11px; color: var(--accent-2);
-}
-.ocropt {
+.optrow {
   display: flex; align-items: center; gap: 10px; padding: 7px 9px;
   border-radius: 6px; cursor: pointer; font-size: 13px;
   border: 1px solid transparent;
 }
-.ocropt:hover { background: var(--panel); border-color: var(--line); }
-.ocropt .conf {
-  margin-left: auto; color: var(--dimmer); font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
-}
+.optrow:hover { background: var(--panel); border-color: var(--line); }
 
 .siblings {
   border: 1px solid var(--line-soft); border-radius: var(--r-sm);
   padding: 10px 11px; margin-top: 10px; background: var(--panel-2);
 }
-.siblings .ocropt .note {
+.siblings .optrow .note {
   color: var(--dimmer); font-size: 11.5px; margin-left: auto; text-align: right;
   max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.siblings .ocropt .tag { flex: 0 0 auto; }
+.siblings .optrow .tag { flex: 0 0 auto; }
 .siblings > button { margin-top: 8px; }
-
-.ambig {
-  border: 1px solid rgba(242,158,56,.45); border-radius: var(--r-sm);
-  padding: 11px; margin-top: 10px; background: rgba(242,158,56,.05);
-}
-.ambig h4 { margin: 0 0 7px; font-size: 12.5px; color: var(--accent-2); }
 
 /* ------------------------------------------------------------ inv diff */
 
-.diff { display: grid; gap: 6px; margin-top: 10px; }
-.diffrow {
-  display: flex; gap: 9px; align-items: center; font-size: 12.5px;
-  padding: 5px 8px; border-radius: 6px; background: var(--panel-2);
-}
 .badge {
   font-size: 10px; border-radius: 4px; padding: 1px 7px;
   border: 1px solid var(--line); text-transform: uppercase; letter-spacing: .05em;
@@ -1178,7 +1140,6 @@ footer {
 /* Copy that describes screenshot reading. Hidden when the backend has no OCR
    engine — the hosted build has none, and prose offering a feature that is not
    there is its own kind of wrong answer. */
-body.no-ocr .ocr-only { display: none !important; }
 
 /* ------------------------------------------------------- "what this is" ---
    First-visit orientation. Spans both columns above the Setup grid. */
@@ -1374,7 +1335,7 @@ body.no-ocr .ocr-only { display: none !important; }
   .tabs button { padding: 11px 14px; }
   .results > div { padding: 11px 10px; }
   .poolrow { padding: 10px 9px; }
-  .ocropt, .targetrow { padding: 9px 9px; }
+  .optrow, .targetrow { padding: 9px 9px; }
   .card h2 .h2actions button { padding: 7px 11px; font-size: 11.5px; }
   button.enh { padding: 8px 10px; font-size: 10.5px; }
   .planrow button.done { padding: 7px 11px; }
@@ -1399,7 +1360,7 @@ body.no-ocr .ocr-only { display: none !important; }
      nudged sideways and a row stays lit as though it were still selected. Both
      are cursor feedback and neither means anything without a cursor. */
   .pick:hover { transform: none; }
-  .results > div:hover, .poolrow:hover, .ocropt:hover { background: none; border-color: transparent; }
+  .results > div:hover, .poolrow:hover, .optrow:hover { background: none; border-color: transparent; }
   /* The keyboard highlight and the real states still have to win. */
   .results > div.active { background: var(--panel-2); border-color: var(--accent); }
   .poolrow.held { background: var(--panel-2); border-color: var(--line-soft); }

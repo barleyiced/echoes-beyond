@@ -72,7 +72,7 @@ exit /b 0
 :start_bg
 echo Starting DU Companion in the background...
 start "DU Companion" /min "%PY%" -m web.app
-powershell -NoProfile -Command "$u='%URL%/api/ocr/status'; for ($i=0; $i -lt 25; $i++) { try { $null = Invoke-WebRequest -Uri $u -UseBasicParsing -TimeoutSec 2; exit 0 } catch { Start-Sleep -Milliseconds 800 } }; exit 1"
+powershell -NoProfile -Command "$u='%URL%/api/meta'; for ($i=0; $i -lt 25; $i++) { try { $null = Invoke-WebRequest -Uri $u -UseBasicParsing -TimeoutSec 2; exit 0 } catch { Start-Sleep -Milliseconds 800 } }; exit 1"
 if errorlevel 1 (
     echo.
     echo The server did not come up in time. Try "du start" to see the error.

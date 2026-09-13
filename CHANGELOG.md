@@ -25,6 +25,46 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+## 2026-09-13 · build b0b8c3774a87
+
+### Notices
+
+- Equations ask for more than the tool used to think, and every Equation verdict
+  moves as a result. The game files carry a lower requirement than a run actually
+  uses. A Rare asks for 3 and 3 rather than 2 and 2, an Epic 6 and 4, a Legendary
+  9 and 6. On a real save the tool called 29 of 104 requirements met where the
+  game said 13, so it has been overstating how close your build is for as long as
+  it has existed. The Run state tab now shows the same numbers your Equation
+  screen does. Boundary Equations are unchanged at 16, because none has been seen
+  on a run screen and guessing one would be inventing a figure.
+
+- Reading screenshots is gone. The scan zones on Decide, Spend and What I own
+  have been removed, along with the inventory diff behind them. They never
+  worked on this site at all, only in the local app, and they were barely used.
+  Everything you could scan you can still type, and search is much better at
+  finding what you type than it was.
+
+### Bug Fixes
+
+- Search finds names it used to miss completely. **45 entries could not be found
+  even by pasting their exact name.** Anything hyphenated was affected, so
+  Ever-Peaceful Dream, Faster-than-Light Surge, Space-Time Prism, Anti-Inorganic
+  Virus and every Celesticomet Alloy were unreachable, and so was every name with
+  an accent in it.
+- You can now drop the accents and apostrophes. Type "doden" for Sygdommen til
+  Døden, or "lexperience interieure" for L'Expérience Intérieure. Both spellings
+  work, and so does "everpeaceful" for Ever-Peaceful Dream.
+- Typing more of a name no longer loses it. Searching "shar" found Master of
+  Sharing, "shari" found nothing, and "sharing" found it again. Results appeared,
+  vanished and came back as you typed. 99 entries behaved that way.
+
+### Optimizations
+
+- The Spend tab has a Clear button, so you can empty a whole Occurrence in one
+  click instead of removing each line in turn. It clears the lines, the costs you
+  typed on them, the sibling offer and the verdicts, which is the same set a
+  reroll clears, because either way the screen you were looking at is gone.
+
 ## 2026-09-13 · build e9c2f0f3fe0f
 
 ### Bug Fixes

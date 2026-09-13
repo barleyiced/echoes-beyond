@@ -36,15 +36,6 @@ const HttpBackend = {
     return r.json();
   },
 
-  // Screenshot uploads. Separate because they are multipart rather than JSON,
-  // and because a backend without OCR answers them without a network call.
-  async upload(path, blob, name = 'shot.png') {
-    const fd = new FormData();
-    fd.append('file', blob, name);
-    const r = await fetch(url(path), { method: 'POST', body: fd });
-    if (!r.ok) throw new Error(await r.text());
-    return r.json();
-  },
 };
 
 // The same interface, answered by CPython-on-WASM in a worker instead of by a
@@ -85,11 +76,6 @@ const PyodideBackend = (() => {
         worker.postMessage({ id, path, body: body ?? {} });
       });
     },
-    // No OCR engine here by design. The scan controls are hidden anyway, so
-    // this only ever fires if something calls it directly.
-    async upload() {
-      throw new Error('This build cannot read screenshots');
-    },
   };
 })();
 
@@ -97,7 +83,6 @@ let backend = HttpBackend;
 const setBackend = (b) => { backend = b; };
 
 const api = (path, body) => backend.call(path, body);
-const apiUpload = (path, blob, name) => backend.upload(path, blob, name);
 
 // Which backend serves this page. The hosted build ships the meta tag; the
 // query parameter is for exercising the worker against the local server.
@@ -984,6 +969,19 @@ function renderOptions() {
   $('#askOffer').disabled = OPTIONS.length < 1;
 }
 
+// Everything on this tab describes one Occurrence, so it all goes together.
+// A reroll clears exactly the same set, because a rerolled screen is as gone as
+// a cleared one: the lines, the prices you typed on them, the sibling offer and
+// the verdicts describing it all belong to an event that is no longer in front
+// of you. Keeping one function means the two cannot drift apart.
+function clearOptionScreen() {
+  OPTIONS = [];
+  Object.keys(OPT_COSTS).forEach((k) => delete OPT_COSTS[k]);
+  renderOptions();
+  $('#optSiblings').innerHTML = '';
+  $('#offerResult').innerHTML = '';
+}
+
 /** Offer the rest of the Occurrence once one of its lines has been identified. */
 async function offerOptionSet(picked) {
   const box = $('#optSiblings');
@@ -1017,7 +1015,7 @@ async function offerOptionSet(picked) {
   };
 
   rest.forEach((o) => {
-    const row = el('div', 'ocropt');
+    const row = el('div', 'optrow');
     row.append(el('span', null, o.name));
     row.append(el('span', 'note', o.desc));
     if (o.effects?.includes('leave')) row.append(el('span', 'tag', 'stop'));
@@ -1443,6 +1441,16 @@ function setupSpend() {
     offerOptionSet(e);
   });
 
+  $('#clearOptions').onclick = () => {
+    clearOptionScreen();
+    // The search box keeps what you typed on every other tab, but here the text
+    // is a line off the Occurrence you just cleared, and leaving it there leaves
+    // its hits sitting under a box you emptied.
+    $('#optSearch').value = '';
+    $('#optResults').innerHTML = '';
+    $('#refreshCost').value = '0';
+  };
+
   $('#askOffer').onclick = async () => {
     const data = await api('/api/offer', {
       run: RUN,
@@ -1454,15 +1462,9 @@ function setupSpend() {
     renderVerdicts(box, data.verdicts,
       `You hold ${fmtNum(data.fragments)} fragments · scarcity ${data.fragment_scarcity}`,
       (v, card) => {
-        const btn = refreshedButton(v, () => {
-          // The reroll replaces the whole screen, so the lines, their prices
-          // and the sibling offer all belong to an Occurrence that is gone.
-          OPTIONS = [];
-          Object.keys(OPT_COSTS).forEach((k) => delete OPT_COSTS[k]);
-          renderOptions();
-          $('#optSiblings').innerHTML = '';
-          box.innerHTML = '';
-        });
+        // The reroll replaces the whole screen, so it clears the same set the
+        // Clear button does. See clearOptionScreen.
+        const btn = refreshedButton(v, clearOptionScreen);
         if (!btn) return;
         const actions = el('div', 'actions');
         actions.append(btn);
@@ -1473,33 +1475,6 @@ function setupSpend() {
     // nothing, that fact outranks every other note on the panel.
     if (data.unreadable) box.prepend(warnBox(data.unreadable_note));
   };
-
-  setupDrop('#optDrop', async (blob) => {
-    const box = $('#optLines');
-    box.innerHTML = '<div class="hint">reading…</div>';
-    let lines;
-    try {
-      ({ lines } = await apiUpload('/api/ocr/options', blob));
-    } catch (e) {
-      box.innerHTML = '';
-      box.append(el('div', 'hint', 'read failed'));
-      return;
-    }
-    box.innerHTML = '';
-    const useful = lines.filter((l) => l.cost || l.heat);
-    useful.forEach((l) => {
-      box.append(el('div', 'hint',
-        `read: "${l.text.slice(0, 70)}"` +
-        (l.cost ? ` → cost ${l.cost}` : '') +
-        (l.heat ? ` → Heat ${l.heat}${l.heat_max ? '/' + l.heat_max : ''}` : '')));
-      if (l.heat) { $('#heat').value = l.heat; RUN.heat = l.heat; }
-      if (l.heat_max) { $('#heatMax').value = l.heat_max; RUN.heat_max = l.heat_max; }
-    });
-    if (!useful.length) box.append(el('div', 'hint', 'no costs found in that image'));
-    const costs = lines.map((l) => l.cost).filter(Boolean);
-    OPTIONS.forEach((o, i) => { if (costs[i]) OPT_COSTS[o.id] = costs[i]; });
-    renderOptions(); updatePosNote(); save();
-  });
 }
 
 // ------------------------------------------------------------- wishpower
@@ -1830,159 +1805,6 @@ function setupWishpower() {
   };
 }
 
-// ------------------------------------------------------------------- OCR
-function setupDrop(sel, handler) {
-  const zone = $(sel);
-  if (!zone) return;
-  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('hot'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('hot'));
-  zone.addEventListener('drop', (e) => {
-    e.preventDefault(); zone.classList.remove('hot');
-    const f = [...e.dataTransfer.files].find((f) => f.type.startsWith('image/'));
-    if (f) handler(f);
-  });
-  zone.onclick = () => {
-    const inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = 'image/*';
-    inp.onchange = () => inp.files[0] && handler(inp.files[0]);
-    inp.click();
-  };
-  zone._handler = handler;
-}
-
-function renderOcrCards(cards) {
-  const box = $('#ocrCards');
-  box.innerHTML = '';
-  if (!cards.length) {
-    box.append(emptyState('No text found. Try a tighter crop of the choice screen.'));
-    return;
-  }
-  cards.forEach((c) => {
-    const card = el('div', 'ocrcard' + (c.ambiguous ? ' needs' : ''));
-    const seen = el('div', 'seen');
-    seen.append(document.createTextNode('read: '));
-    seen.append(el('code', null, c.observed.text || '(no name line)'));
-    if (c.observed.path) seen.append(document.createTextNode(' · ' + c.observed.path));
-    card.append(seen);
-    if (c.ambiguous) card.append(el('div', 'hint', c.note || 'Several match. Pick the right one.'));
-
-    c.candidates.forEach((cand, i) => {
-      const opt = el('div', 'ocropt');
-      if (cand.path) opt.append(pathIcon(cand.path));
-      opt.append(el('span', null, cand.name));
-      const rt = rarityTag(cand.rarity);
-      if (rt) opt.append(rt);
-      opt.append(el('span', 'conf', cand.score.toFixed(0)));
-      if (i === 0 && !c.ambiguous) opt.style.fontWeight = '600';
-      opt.onclick = () => {
-        if (!OFFER.some((o) => o.id === cand.id)) OFFER.push(cand);
-        CACHE.set(cand.kind + ':' + cand.id, cand);
-        card.remove();
-        renderOffer();
-      };
-      card.append(opt);
-    });
-    box.append(card);
-  });
-}
-
-async function sendImage(blob) {
-  $('#ocrCards').innerHTML = '<div class="hint">reading…</div>';
-  try {
-    const path = '/api/ocr?kind=' + encodeURIComponent($('#offerKind').value);
-    renderOcrCards((await apiUpload(path, blob)).cards);
-  } catch (e) {
-    $('#ocrCards').innerHTML = '';
-    $('#ocrCards').append(el('div', 'hint', 'OCR failed: ' + e.message));
-  }
-}
-
-// ------------------------------------------------------------- inventory
-function setupInventory() {
-  setupDrop('#invDrop', async (blob) => {
-    const box = $('#invResult');
-    box.innerHTML = '<div class="hint">reading…</div>';
-    let scan;
-    try {
-      scan = await apiUpload('/api/ocr/inventory', blob, 'inv.png');
-    } catch (e) {
-      box.innerHTML = '';
-      box.append(el('div', 'hint', 'read failed'));
-      return;
-    }
-
-    const rec = await api('/api/inventory/reconcile', {
-      run: RUN, scanned: scan.found, complete: $('#invComplete').checked,
-    });
-
-    box.innerHTML = '';
-    box.append(el('div', 'hint', `${scan.boxes_read} text boxes read`));
-    rec.notes.forEach((n) => box.append(warnBox(n)));
-
-    const list = el('div', 'diff');
-    rec.diffs.forEach((d) => {
-      d.added.forEach((it) => {
-        const row = el('div', 'diffrow');
-        row.append(el('span', 'badge add', 'add'));
-        if (it.path) row.append(pathIcon(it.path));
-        row.append(el('span', null, `${it.name}`));
-        row.append(el('span', 'tag', d.kind));
-        list.append(row);
-      });
-      d.removed.forEach((it) => {
-        const row = el('div', 'diffrow');
-        row.append(el('span', 'badge rem', 'remove'));
-        if (it.path) row.append(pathIcon(it.path));
-        row.append(el('span', null, `${it.name}`));
-        list.append(row);
-      });
-    });
-    if (list.children.length) box.append(list);
-
-    if (scan.ambiguous?.length) {
-      const amb = el('div', 'ambig');
-      amb.append(el('h4', null, `${scan.ambiguous.length} unclear. Pick the right one`));
-      scan.ambiguous.slice(0, 8).forEach((a) => {
-        amb.append(el('div', 'seen', `read: "${a.observed}"`));
-        a.candidates.forEach((c) => {
-          const opt = el('div', 'ocropt');
-          if (c.path) opt.append(pathIcon(c.path));
-          opt.append(el('span', null, c.name));
-          opt.append(el('span', 'conf', c.score.toFixed(0)));
-          opt.onclick = () => {
-            const key = ownedKey(c.kind);
-            if (key && !RUN[key].includes(c.id)) RUN[key].push(c.id);
-            CACHE.set(c.kind + ':' + c.id, c);
-            opt.parentElement.remove();
-            renderOwned(); refreshRun(); save();
-          };
-          amb.append(opt);
-        });
-      });
-      box.append(amb);
-    }
-
-    if (rec.requires_confirmation) {
-      const btn = el('button', 'primary', 'Apply these changes');
-      btn.onclick = () => {
-        rec.diffs.forEach((d) => {
-          const key = ownedKey(d.kind);
-          if (!key) return;
-          d.added.forEach((it) => { if (!RUN[key].includes(it.id)) RUN[key].push(it.id); });
-          if (rec.complete) {
-            const drop = new Set(d.removed.map((it) => it.id));
-            RUN[key] = RUN[key].filter((i) => !drop.has(i));
-          }
-        });
-        box.innerHTML = '';
-        box.append(el('div', 'hint', 'applied'));
-        renderOwned(); refreshRun(); save();
-      };
-      box.append(btn);
-    }
-  });
-}
-
 // ---------------------------------------------------------------- run tab
 async function refreshRun() {
   const data = await api('/api/equations', RUN);
@@ -2045,7 +1867,7 @@ async function refreshRun() {
 
 // ----------------------------------------------------------------- owned
 // The list used to be flat chips built from a client-side cache, which meant an
-// item added by OCR or restored from disk showed as "blessing 617042". The
+// item restored from disk showed as "blessing 617042". The
 // server now resolves and groups everything, so this only draws it.
 
 function dropOwned(kind, id) {
@@ -2386,7 +2208,7 @@ async function renderWeightedPool() {
   // lists to maintain for one decision.
   // Read the sockets off the payload, not off `equipped_weighted`: an empty
   // equipped list means "the first N held" (`live_weighted()`), which a restored
-  // snapshot or an OCR scan can still produce. Reading the raw field there would
+  // snapshot can still produce. Reading the raw field there would
   // show zero ticks under a panel reading "Sockets: A + B".
   const socketedIds = new Set(plan?.equipped || RUN.equipped_weighted);
 
@@ -3137,7 +2959,7 @@ async function boot() {
 
   $('#clearOffer').onclick = () => {
     OFFER = []; renderOffer();
-    $('#ranking').innerHTML = ''; $('#ocrCards').innerHTML = '';
+    $('#ranking').innerHTML = '';
   };
   $('#rankBtn').onclick = async () => {
     const data = await api('/api/rank',
@@ -3150,37 +2972,9 @@ async function boot() {
   setupStore();
   setupWishpower();
   setupTargets();          // needs DOMAIN_TYPES, so after setupDoors
-  setupInventory();
-
-  // Every screenshot control starts hidden and is revealed only if the backend
-  // actually has an OCR engine. The hosted build has none by design (WEB-PLAN.md),
-  // so these must not merely fail on click — #optDrop used to be visible and
-  // unguarded, which is precisely that failure.
-  try {
-    const { available } = await api('/api/ocr/status');
-    document.body.classList.toggle('no-ocr', !available);
-    if (available) {
-      ['#ocrPanel', '#invPanel', '#optDrop'].forEach((s) => { $(s).hidden = false; });
-    }
-  } catch (e) {
-    // OCR optional — leave every scan control hidden, and the prose describing
-    // them with it.
-    document.body.classList.add('no-ocr');
-  }
-
-  setupDrop('#dropzone', sendImage);
 
   document.querySelectorAll('.tabs button').forEach((b) => {
     b.onclick = () => switchTab(b.dataset.tab);
-  });
-
-  // Ctrl+V routes to the scan zone on whichever tab is visible.
-  document.addEventListener('paste', (ev) => {
-    const item = [...(ev.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
-    if (!item) return;
-    const active = document.querySelector('.tab.active');
-    const zone = active?.querySelector('.dropzone');
-    if (zone && zone._handler) zone._handler(item.getAsFile());
   });
 
   // Number keys jump between tabs, unless you are typing.

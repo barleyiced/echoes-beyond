@@ -14,6 +14,7 @@ be multiplied by 100 before display.
 from __future__ import annotations
 
 import re
+import unicodedata
 
 # #1[i]  #2[i]%  #1[f1]  #3[f2]%
 PARAM_RE = re.compile(r"#(\d+)\[([if])(\d*)\](%?)")
@@ -100,3 +101,63 @@ def plain(template: str) -> str:
     out = LINEBREAK_RE.sub(" ", out)
     out = re.sub(r"\{SPACE\}", " ", out)
     return re.sub(r"\s+", " ", out).strip()
+
+
+# --------------------------------------------------------------------------
+# search folding
+# --------------------------------------------------------------------------
+
+# Letters that carry no combining mark, so NFKD leaves them exactly as they are.
+# Decomposing is enough for "Désastre" and "Disperării"; it does nothing for a
+# stroked or ligatured letter, and "Døden" split on a naive [^A-Za-z] becomes
+# "D" and "den". Only ø appears in the pinned data. The rest are here so the next
+# patch's name does not need a code change, and `verify()` fails the build on an
+# unmapped one rather than letting it silently become unsearchable.
+FOLD_MAP = {
+    "ø": "o", "Ø": "O", "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE",
+    "ß": "ss", "ð": "d", "Ð": "D", "þ": "th", "Þ": "TH",
+    "ł": "l", "Ł": "L", "đ": "d", "Đ": "D", "ı": "i", "ħ": "h", "ŧ": "t",
+}
+
+_FOLD_RE = re.compile(r"[^\w]+", re.UNICODE)
+
+
+def fold(text: str) -> str:
+    """ASCII-fold text for searching, so what you can type finds what is stored.
+
+    Applied to the indexed text *and* to the query, which is the only way typing
+    "doden" reaches "Sygdommen til Døden" and "lexperience interieure" reaches
+    "L'Expérience Intérieure". Folding one side alone just moves the mismatch.
+    """
+    out = "".join(FOLD_MAP.get(ch, ch) for ch in text)
+    out = unicodedata.normalize("NFKD", out)
+    return "".join(ch for ch in out if not unicodedata.combining(ch))
+
+
+_JOINABLE_RE = re.compile(r"[\w]+(?:['’-][\w]+)+", re.UNICODE)
+
+
+def index_text(text: str) -> str:
+    """Folded text for the index, plus the run-together form of joined words.
+
+    A reader types a name the way it looks, and an apostrophe or a hyphen is the
+    one thing they drop. "L'Expérience Intérieure" splits to `l` and `experience`,
+    so somebody typing "lexperience interieure" matches neither. Indexing the
+    joined form as well means both spellings land, where picking one side of the
+    split would always strand the other.
+    """
+    folded = fold(text)
+    extra = [m.group(0) for m in _JOINABLE_RE.finditer(folded)]
+    joined = [re.sub(r"['’-]", "", e) for e in extra]
+    joined = [j for j in joined if j and j not in extra]
+    return " ".join([folded] + joined)
+
+
+def search_tokens(text: str) -> list[str]:
+    """Fold, then split on anything that is not a word character.
+
+    Splitting matters as much as folding. The old code deleted the separator
+    instead, which turned "Ever-Peaceful" into one token the index never holds,
+    so every hyphenated name was unreachable even when pasted whole.
+    """
+    return [t for t in _FOLD_RE.split(fold(text)) if t]
