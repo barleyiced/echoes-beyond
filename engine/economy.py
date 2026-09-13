@@ -34,6 +34,13 @@ from engine.synergy import synergy_score, team_tags
 # (13, 17 or 20 Domains depending on difficulty).
 TYPICAL_SPEND_PER_DOMAIN = 28
 
+# How far ahead the best option has to be before the tool claims it is the best.
+# Below this the top slot is decided by list order, which the player cannot see,
+# and a highlight there asserts a preference the engine does not hold. Twin Gates
+# of the Maze produced a clean three-way tie at 0.00 and still highlighted a row.
+# An estimate like everything else here, but the direction is not: a tie is a tie.
+TIE_MARGIN = 0.02
+
 
 def _n(value: int | float) -> str:
     """Thousands-separated, since fragment balances run into four figures."""
@@ -503,10 +510,28 @@ def decide_purchase(option: dict, run: RunState, observed_cost: int | None = Non
                    reasons=reasons, cost=cost, currency=currency)
 
 
+def screen_is_unreadable(options: list[dict]) -> bool:
+    """True when the classifier got nothing from any option on this screen.
+
+    One unreadable line among several is ordinary, and the others still carry the
+    decision. A screen where *nothing* classified is different in kind: there is
+    no field to rank on, so sorting orders the rows by a tiebreak the player
+    cannot see and the top slot reads as a verdict anyway.
+
+    Reported from Twin Gates of the Maze, where all three lines scored 0.00,
+    "Take nothing" scored 0.05 on fragment scarcity alone, and so the tool
+    recommended declining a free Blessing the screen was offering at a stated 0%
+    loss chance. Every row also said to treat its score as no information, so the
+    page asserted both things at once.
+    """
+    return bool(options) and not any(o.get("effects") for o in options)
+
+
 def decide_offer(options: list[dict], run: RunState, costs: dict[int, int] | None = None,
                  refresh_cost: int = 0, offered_entries: list[dict] | None = None) -> list[Verdict]:
     """Rank every option on an event or shop screen, including reroll and skip."""
     costs = costs or {}
+    unreadable = screen_is_unreadable(options)
     verdicts = [decide_purchase(o, run, costs.get(o["id"])) for o in options]
 
     if refresh_cost or offered_entries:
@@ -530,7 +555,27 @@ def decide_offer(options: list[dict], run: RunState, costs: dict[int, int] | Non
             why = "keeping your fragments for a better offer"
         verdicts.append(Verdict(action="skip", target="Take nothing", score=0.05, reasons=[why]))
 
+    # Skip stays on the screen, because invariant 2 is that it always competes.
+    # What it must not do here is *win* on a tiebreak while every real option
+    # reads 0.00. So nothing is recommended and nothing is re-ordered: the rows
+    # stay in the order you see them in game, with skip and reroll after them.
+    if unreadable:
+        return verdicts
+
     verdicts.sort(key=lambda v: -v.score)
-    if verdicts:
+    if not verdicts:
+        return verdicts
+
+    # A highlight on a tie is the same defect as ranking an unreadable screen:
+    # the row that lands on top got there by list order, and the badge reads as
+    # a verdict regardless. Say it is level instead.
+    runner_up = verdicts[1].score if len(verdicts) > 1 else float("-inf")
+    if verdicts[0].score - runner_up > TIE_MARGIN:
         verdicts[0].recommended = True
+    else:
+        tied = [v for v in verdicts if verdicts[0].score - v.score <= TIE_MARGIN]
+        verdicts[0].reasons.append(
+            f"{len(tied)} options here score level, so the engine is not picking "
+            f"between them. Break the tie on what your run needs"
+        )
     return verdicts

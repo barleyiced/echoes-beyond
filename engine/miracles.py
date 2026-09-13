@@ -297,6 +297,57 @@ def _beacon_worth(beacon: dict) -> float:
     return 0.7
 
 
+# A Miracle that hands you a Curio inherits whatever that Curio does, and the
+# Curio is where the cost is written. Trader Mask: Release is the case that
+# forced this: its own text reads as a pure upgrade ("Purchasing Arcadia Coin
+# does not consume Cosmic Fragments"), and the Book of Heartknots it grants is
+# the half that shuts off your fragment income and then takes the run. Reading
+# only the Miracle's own sentence recommends a free lunch.
+#
+# The phrases are matched on the *granted Curio's* text, and they are chosen to
+# separate run progress from combat resources. "All allies lose all their
+# Energy" is a bad round; losing your Blessings, Curios and Equations is the
+# evening. Absolute Failure Prescription and Interastral Big Lotto both say
+# "lose all" about Energy or Technique Points and neither is a run-ender, so a
+# bare "lose all" would fire on them and teach the player to ignore the warning.
+RUN_PROGRESS_NOUNS = ("blessing", "curio", "equation")
+
+
+def _granted_curio_costs(miracle: dict) -> tuple[float, list[str], list[str]]:
+    """Costs written on the Curios a Miracle grants, as (penalty, notes, warnings).
+
+    Warnings are separate from notes because these two failures are not the same
+    size as the rest of `downsides`. A negative beacon makes a card worse. This
+    ends the run, so it has to reach the player as a sentence rather than as one
+    more item in a comma-joined factor note.
+    """
+    penalty, notes, warnings = 0.0, [], []
+    for curio in (dataset.get("curio", i) for i in miracle.get("curio_refs", [])):
+        if not curio:
+            continue
+        low = curio.get("desc", "").lower()
+        name = curio["name"]
+
+        wipe = re.search(r"lose all ([^.]*)", low)
+        if wipe and any(n in wipe.group(1) for n in RUN_PROGRESS_NOUNS):
+            penalty += 0.90
+            notes.append(f"{name} can cost you the run")
+            when = re.search(r"after (\d+) domain\(?s?\)?", low)
+            deadline = (f"After {when.group(1)} Domains"
+                        if when else "Once its condition lands")
+            warnings.append(
+                f"This hands you {name}. {deadline} you lose every Blessing, Curio "
+                f"and Equation you hold, along with your Cosmic Fragments. Take it "
+                f"only if you can clear the debt before then."
+            )
+
+        if "cannot obtain cosmic fragment" in low:
+            penalty += 0.40
+            notes.append(f"{name} stops your fragment income")
+
+    return penalty, notes, warnings
+
+
 def downsides(miracle: dict) -> tuple[float, list[str]]:
     """Costs the Miracle states about itself, 0..1 with reasons."""
     low = miracle.get("effect", "").lower()
@@ -330,6 +381,10 @@ def downsides(miracle: dict) -> tuple[float, list[str]]:
     for b in named_negative:
         penalty += 0.35
         notes.append(f"{b['name']} is a negative beacon")
+
+    granted, granted_notes, _ = _granted_curio_costs(miracle)
+    penalty += granted
+    notes.extend(granted_notes)
 
     return min(1.0, penalty), notes
 
@@ -442,6 +497,10 @@ def score_miracle(miracle: dict, run: RunState) -> MiracleScore:
     if penalty:
         out.factors.append(_factor("downside", -penalty, WEIGHTS["downside"],
                                    ", ".join(dnotes)))
+    # A run-ending grant is priced by `downsides` like everything else, but it
+    # also has to be said outright. Invariant 4 is that a verdict explains
+    # itself, and "downside -0.9" explains nothing about what is at stake here.
+    out.warnings.extend(_granted_curio_costs(miracle)[2])
     return out
 
 

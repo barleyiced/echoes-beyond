@@ -343,8 +343,16 @@ def offer(body: dict) -> dict:
     verdicts = economy.decide_offer(options, run, costs=costs,
                                     refresh_cost=body.get("refresh_cost", 0),
                                     offered_entries=entries)
+    unreadable = economy.screen_is_unreadable(options)
     return {
         "verdicts": [v.to_dict() for v in verdicts],
+        "unreadable": unreadable,
+        "unreadable_note": (
+            "The engine read nothing from any line on this screen, so it is not "
+            "ranking them. Nothing here is recommended and the order is the order "
+            "you gave. Read the screen and decide yourself. If a line quotes odds "
+            "or a payout, those are live numbers the game files do not carry."
+        ) if unreadable else "",
         "fragments": run.fragments,
         "fragment_scarcity": round(economy.fragment_scarcity(run), 2),
         "endgame_advice": economy.spend_everything_advice(run),

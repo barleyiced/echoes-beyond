@@ -25,6 +25,37 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+## 2026-09-13 · build e9c2f0f3fe0f
+
+### Bug Fixes
+
+- The Spend tab no longer recommends an option it cannot read. Twin Gates of the
+  Maze offered a free Blessing and the app put "Take nothing" on top of it. Every
+  line had scored 0.00, so the skip line won on a tiebreak you could not see,
+  while each row also said to treat its score as no information. When the engine
+  reads nothing from any line on a screen it now says so, leaves the rows in the
+  order you gave, and recommends nothing.
+- The app no longer highlights a winner when the top options score level. It says
+  they are level and tells you to break the tie on what your run needs.
+- The Spend tab reads a lot more of what an option says. It now understands
+  "grant" as a way of giving you something, "Curio Obtained:" and "Curio(s) to be
+  lost" where the game puts the noun first, and "Lose N Cosmic Fragments" as a
+  cost, which it had never treated as a spend at all. Options worded that way
+  used to rate the same as something free. It also reads "success will grant you
+  X, while failure will cause Y" as the gamble it is, so those screens now warn
+  you and point you at the odds printed in game.
+- A line whose only text is "Leave" is read as walking away again. It used to
+  show a Buy badge, so an Occurrence could offer you two walk-away rows wearing
+  different labels.
+
+- The Wishpower tab now warns you about Trader Mask: Release, and stops ranking
+  it near the top. Its own text only says the loan costs no Cosmic Fragments,
+  which reads as a free upgrade. The Curio it hands you, Book of Heartknots,
+  shuts off your fragment income and then takes every Blessing, Curio and
+  Equation you hold after 5 Domains. The card now says that outright and its
+  score drops to match. Any Wishpower Miracle that grants a Curio is read the
+  same way, so the cost of what you are given counts against the card giving it.
+
 ## 2026-09-08 · build 4339433425fd
 
 ### Notices

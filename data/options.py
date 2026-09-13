@@ -24,8 +24,13 @@ import re
 # Ordered so that more specific patterns can override the generic ones below.
 EFFECT_PATTERNS: dict[str, list[str]] = {
     # --- what you get ---
-    "gain_blessing": [r"obtain[^.]*blessing", r"gain[^.]*blessing", r"receive[^.]*blessing"],
-    "gain_curio": [r"obtain[^.]*curio", r"gain[^.]*curio", r"receive[^.]*curio"],
+    # "grant" is how the success-or-failure wording gives you something, and the
+    # reversed forms ("Curio Obtained: Ambergris Cheese") put the noun first,
+    # which a verb-then-noun pattern cannot see. Both shipped unreadable.
+    "gain_blessing": [r"obtain[^.]*blessing", r"gain[^.]*blessing", r"receive[^.]*blessing",
+                      r"grant[^.]*blessing", r"blessing[^.]*obtained"],
+    "gain_curio": [r"obtain[^.]*curio", r"gain[^.]*curio", r"receive[^.]*curio",
+                   r"grant[^.]*curio", r"curio[^.]*obtained"],
     # "Retrieve"/"harvest" is how an escalating gamble words *cashing out* — the
     # fragments come back to you, so it is a gain, and (below) also a stop.
     "gain_fragments": [r"obtain[^.]*cosmic fragment", r"gain[^.]*cosmic fragment",
@@ -38,10 +43,18 @@ EFFECT_PATTERNS: dict[str, list[str]] = {
     # "Insert" is the lottery/slot-machine verb ("Insert 200 Cosmic Fragments").
     # It reads as flavour but it is a spend, and missing it left every gambling
     # Occurrence scoring as though it were free.
+    # `lose` was missing and it is the game's commonest wording for paying
+    # fragments. Ten options say "Lose N% of the Cosmic Fragments you currently
+    # own" and every one of them rated the same as a free gain.
     "cost_fragments": [r"consumes?[^.]*cosmic fragment", r"spend[^.]*cosmic fragment",
-                       r"pay[^.]*cosmic fragment", r"insert[^.]*cosmic fragment"],
-    "cost_curio": [r"discard \d* ?\w* ?curio", r"consumes?[^.]*curio", r"lose[^.]*curio"],
-    "cost_blessing": [r"discard[^.]*blessing", r"consumes?[^.]*blessing", r"lose[^.]*blessing"],
+                       r"pay[^.]*cosmic fragment", r"insert[^.]*cosmic fragment",
+                       r"lose[^.]*cosmic fragment"],
+    # The old curio pattern allowed one word between "discard" and the noun, so
+    # "discard all Negative Curios" missed. Widened to match the blessing one.
+    "cost_curio": [r"discard[^.]*curio", r"consumes?[^.]*curio", r"lose[^.]*curio",
+                   r"curio[^.]*(to be lost|lost:)"],
+    "cost_blessing": [r"discard[^.]*blessing", r"consumes?[^.]*blessing", r"lose[^.]*blessing",
+                      r"blessing[^.]*(to be lost|lost:)"],
     "cost_hp": [r"lose[^.]*\bhp\b", r"consumes?[^.]*\bhp\b", r"at the cost of[^.]*\bhp\b"],
     "cost_heat": [r"consumes?[^.]*heat", r"spend[^.]*heat"],
 
@@ -49,14 +62,20 @@ EFFECT_PATTERNS: dict[str, list[str]] = {
     "enhance": [r"\benhance", r"upgrade[^.]*blessing", r"increase[^.]*rarity"],
     "reforge": [r"overwrite", r"reforge", r"recast", r"re-?roll", r"refresh"],
     "synthesize": [r"synthesi[sz]e", r"compose"],
-    "remove_negative": [r"remove[^.]*(negative|curse)", r"dispel[^.]*curse"],
+    "remove_negative": [r"remove[^.]*(negative|curse)", r"dispel[^.]*curse",
+                        r"discard[^.]*negative curio"],
     "domain": [r"\bdomain\b", r"\bbeacon\b"],
     "combat": [r"enter combat", r"start[^.]*battle", r"fight"],
 
     # --- risk ---
+    # Success-or-failure wording is the most explicit gamble the game writes and
+    # nothing here recognised it, so Twin Gates of the Maze tagged risk "none".
+    # The odds are a runtime figure the files do not carry, which is the point of
+    # tagging it: the verdict says to read the percentage off your own screen.
     "gamble": [r"\bbet\b", r"gambl", r"wager", r"random(ly)? (choose|select)", r"\bdice\b",
                r"chance to", r"\bluck\b", r"coin", r"lotter", r"jackpot", r"raffle",
-               r"slot machine", r"you lost everything"],
+               r"slot machine", r"you lost everything",
+               r"success[^.]*while failure", r"loss probabilit", r"\bstake\b"],
     "unknown_outcome": [r"\bmight\b", r"\bmay\b", r"unknown", r"mysterious", r"unpredictable"],
 
     # --- neutral ---
@@ -105,9 +124,19 @@ def group_of(option_id: int) -> int:
 
 
 def classify(title: str, desc: str) -> list[str]:
-    """Effect tags for one option."""
-    blob = f"{title} {desc}"
-    return sorted(k for k, pats in _COMPILED.items() if any(p.search(blob) for p in pats))
+    """Effect tags for one option.
+
+    The title and the desc are searched **separately**, not as one string. Several
+    patterns here are `^`-anchored (`^leave`, `^ignore`, `^give up`) and against a
+    concatenation those can only ever fire on the title. That is how "Don't open
+    any of them." with the desc "Leave" tagged as nothing and rendered with a BUY
+    badge, putting two walk-away rows on one screen wearing different labels.
+    `classify("Leave", "Leave")` matched and `classify("Don't open any of them.",
+    "Leave")` did not, which was the whole bug in two calls.
+    """
+    parts = [p for p in (title, desc) if p]
+    return sorted(k for k, pats in _COMPILED.items()
+                  if any(pat.search(part) for pat in pats for part in parts))
 
 
 def context_of(title: str, desc: str) -> str:

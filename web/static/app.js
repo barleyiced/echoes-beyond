@@ -1469,6 +1469,9 @@ function setupSpend() {
         card.append(actions);
       });
     if (data.endgame_advice) box.prepend(warnBox(data.endgame_advice));
+    // Prepended last so it sits above the endgame advice. When the engine read
+    // nothing, that fact outranks every other note on the panel.
+    if (data.unreadable) box.prepend(warnBox(data.unreadable_note));
   };
 
   setupDrop('#optDrop', async (blob) => {
