@@ -25,6 +25,22 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+## 2026-09-13 · build 75161fbb654b
+
+### New Features
+
+- The Spend tab has an **Arcadia Coin counter** card, for Trader Mask runs. Log
+  the rate each time you pass a counter and it says whether to buy, sell or hold.
+- It judges a price only against the prices you have logged this run, because the
+  percentage the counter shows you is the change from the price you last saw, not
+  a distance from any fixed value. A down arrow means cheaper than last time, and
+  never cheap. With fewer than three readings it says it cannot tell you yet
+  rather than guessing.
+- It also prices the thing the counter does not: your coins pay you fragments
+  every time you enter a Domain, so waiting for a better price costs nothing. On
+  the last Domain it says sell whatever the price is doing, because coins do not
+  survive a run any more than fragments do.
+
 ## 2026-09-13 · build 1d3856688ed7
 
 ### Bug Fixes

@@ -254,6 +254,20 @@ class RunState:
     # the fallback for a Blessing whose rarity is not in the table.
     heat_per_enhance: int = 1
 
+    # --- Arcadia Coin, the Trader Mask's second currency ----------------------
+    # The counter shows a rate and a percentage, and the percentage is the change
+    # from the *previous* price rather than a distance from any baseline. Three
+    # readings settled it: 156 at +20.00% is exactly the 130 of the reading
+    # before. So the screen cannot tell you whether a price is good, only whether
+    # it moved, and the only source for "is this high" is what this run has seen.
+    # Hence a log the player fills in, the same shape as heat_costs.
+    arcadia_coins: int = 0
+    arcadia_prices: list[int] = field(default_factory=list)   # oldest first
+    # Fragments each coin pays when you enter a Domain. The Mask's own text says
+    # 1; the Trader Mask: Finale gift raises it to 5, so it is editable rather
+    # than a constant.
+    arcadia_dividend: int = 1
+
     # Herta's Curio Store prices by rarity, in Cosmic Fragments. Observed from
     # play — a 1-star card reads 100 and a 2-star 180 — and *not* in the data:
     # no price table exists upstream at the pinned commit, checked the same way

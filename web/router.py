@@ -22,8 +22,8 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import parse_qsl
 
-from engine import (dataset, economy, equations, explain, inventory, masks,
-                    miracles, owned, scoring, store, waypoint)
+from engine import (arcadia, dataset, economy, equations, explain, inventory,
+                    masks, miracles, owned, scoring, store, waypoint)
 from engine import state as run_state
 from engine.state import RunState
 
@@ -385,6 +385,21 @@ def store_shelf(body: dict) -> dict:
     return store.decide_store(shelf, run)
 
 
+def arcadia_counter(body: dict) -> dict:
+    """Buy, sell or hold at the Arcadia Coin counter.
+
+    Reads only what the player has logged. The counter's own percentage is the
+    change from the price they last saw, so it cannot say whether a price is
+    good, and nothing here guesses a fair value — see engine/arcadia.py.
+
+    The run arrives bare rather than under "run", the way /api/equations and
+    /api/owned take it, so `key=None`. Getting that wrong is silent: `_run`
+    returns a default RunState and the card reports zero coins for a player
+    holding five.
+    """
+    return arcadia.advise(_run(body, key=None))
+
+
 def option_set(body: dict) -> dict:
     """The other options that appear on the same Occurrence as this one.
 
@@ -543,6 +558,7 @@ ROUTES: dict[str, Callable[[dict], Any]] = {
     "/api/workbench": workbench,
     "/api/offer": offer,
     "/api/store": store_shelf,
+    "/api/arcadia": arcadia_counter,
     "/api/options/set": option_set,
     "/api/inventory/reconcile": inventory_reconcile,
     "/api/weighted": weighted,

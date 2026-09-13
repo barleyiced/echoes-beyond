@@ -68,6 +68,9 @@ class RunPayload(BaseModel):
     store_prices: dict[str, int] = {"Common": 100, "Rare": 180, "Legendary": 300}
     blessing_prices: dict[str, int] = {"Common": 80, "Rare": 120, "Legendary": 180}
     equation_prices: dict[str, int] = {"Rare": 200, "Epic": 450, "Legendary": 650}
+    arcadia_coins: int = 0
+    arcadia_prices: list[int] = []
+    arcadia_dividend: int = 1
     notes: str = ""
 
     # Transport-level, not part of the run. Declared because pydantic drops
@@ -273,6 +276,11 @@ def api_offer(req: OfferRequest):
 @app.post("/api/store")
 def api_store(req: StoreRequest):
     return call("/api/store", req.model_dump())
+
+
+@app.post("/api/arcadia")
+def api_arcadia(req: RunPayload):
+    return call("/api/arcadia", req.model_dump())
 
 
 @app.get("/api/options/set")

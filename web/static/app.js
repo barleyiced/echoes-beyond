@@ -173,7 +173,8 @@ let RUN = {
   heat_costs: { Common: 1, Rare: 2, Legendary: 3 },
   store_prices: { Common: 100, Rare: 180, Legendary: 300 },
   blessing_prices: { Common: 80, Rare: 120, Legendary: 180 },
-  equation_prices: { Rare: 200, Epic: 450, Legendary: 650 }, notes: '',
+  equation_prices: { Rare: 200, Epic: 450, Legendary: 650 },
+  arcadia_coins: 0, arcadia_prices: [], arcadia_dividend: 1, notes: '',
 };
 let OFFER = [];
 const CACHE = new Map();
@@ -1366,6 +1367,28 @@ function setupStore() {
 }
 
 function setupSpend() {
+  [['arcadiaCoins', 'arcadia_coins'], ['arcadiaDividend', 'arcadia_dividend']]
+    .forEach(([id, key]) => {
+      const inp = $('#' + id);
+      inp.value = RUN[key] ?? inp.value;
+      inp.addEventListener('change', () => {
+        RUN[key] = parseInt(inp.value || '0', 10);
+        renderArcadia();
+        save();
+      });
+    });
+  $('#arcadiaLog').onclick = () => {
+    const v = parseInt($('#arcadiaRate').value || '0', 10);
+    if (!v) return;
+    // Oldest first, because the newest is the price being judged and `position`
+    // reads the last entry.
+    RUN.arcadia_prices = (RUN.arcadia_prices || []).concat(v);
+    $('#arcadiaRate').value = '';
+    renderArcadia();
+    save();
+  };
+  showArcadia();
+
   // Rarity sets the Heat price, so these have to be editable — they are reported
   // from play rather than read out of the game files.
   [['heatCommon', 'Common'], ['heatRare', 'Rare'], ['heatLegendary', 'Legendary']]
@@ -1575,7 +1598,56 @@ function maskChanged() {
   POOL = [];
   MIRACLES = [];
   $('#miracleRanking').innerHTML = '';
+  showArcadia();
   if ($('#tab-wish').classList.contains('active')) loadPool();
+}
+
+// ----------------------------------------------------------- arcadia coin
+// The counter belongs to the Trader Mask alone, so the card is hidden outright
+// for the other thirteen rather than greyed out. A control you can never use is
+// noise on a tab that already holds four.
+const TRADER_MASK = 112;
+
+function showArcadia() {
+  const on = RUN.mask_id === TRADER_MASK;
+  $('#arcadiaCard').hidden = !on;
+  if (on) renderArcadia();
+}
+
+function renderArcadiaPrices() {
+  const box = $('#arcadiaPrices');
+  box.innerHTML = '';
+  (RUN.arcadia_prices || []).forEach((p, i) => {
+    const chip = el('div', 'chip');
+    chip.append(el('span', null, String(p)));
+    const x = el('button', null, '×');
+    x.onclick = () => { RUN.arcadia_prices.splice(i, 1); renderArcadia(); save(); };
+    chip.append(x);
+    box.append(chip);
+  });
+}
+
+async function renderArcadia() {
+  renderArcadiaPrices();
+  const box = $('#arcadiaResult');
+  let data;
+  try {
+    data = await api('/api/arcadia', RUN);
+  } catch (e) {
+    box.innerHTML = '';
+    box.append(el('div', 'hint', 'could not read the counter: ' + e.message));
+    return;
+  }
+  box.innerHTML = '';
+  const d = el('div', 'verdict' + (data.action === 'hold' || data.action === 'log' ? ' skip' : ' rec'));
+  const h = el('h4');
+  h.append(el('span', 'act', data.action));
+  h.append(el('span', 'nm', data.headline));
+  d.append(h);
+  const ul = el('ul');
+  data.reasons.forEach((r) => ul.append(el('li', null, r)));
+  d.append(ul);
+  box.append(d);
 }
 
 async function loadPool() {

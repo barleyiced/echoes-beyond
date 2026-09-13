@@ -307,6 +307,28 @@
     <button id="askWorkbench" class="primary"><svg><use href="#i-rank"/></svg>What should I enhance?</button>
     <div id="workbenchResult"></div>
   </div>
+
+  <!-- Trader Mask only. Left in the column with the Workbench because it is the
+       other thing you stand at a counter and spend at, and it is hidden rather
+       than greyed out for every other Mask, where it would be noise. -->
+  <div class="card" id="arcadiaCard" hidden>
+    <h2><svg><use href="#i-frag"/></svg>Arcadia Coin counter</h2>
+    <p class="hint">
+      The counter shows a rate and a percentage, and the percentage is the change from
+      the price you last saw, not a distance from any fixed value. So a down arrow means
+      cheaper than last time and never cheap. Log the rate each time you pass one and
+      this says where the current price sits in what your run has actually seen.
+    </p>
+    <div class="row">
+      <label>Coins held <input type="number" id="arcadiaCoins" min="0" max="999" value="0"></label>
+      <label>Per Domain, each <input type="number" id="arcadiaDividend" min="0" max="99" value="1"
+             title="The Mask pays 1. The Trader Mask: Finale gift raises it to 5"></label>
+      <label>Rate now <input type="number" id="arcadiaRate" min="0" max="99999" placeholder="e.g. 156"></label>
+      <button id="arcadiaLog" class="primary"><svg><use href="#i-rank"/></svg>Log this rate</button>
+    </div>
+    <div id="arcadiaPrices" class="chips"></div>
+    <div id="arcadiaResult"></div>
+  </div>
   </div>
 
   <div class="col">
