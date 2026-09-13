@@ -172,7 +172,8 @@ let RUN = {
   fragments: 0, heat: 0, heat_max: 0, heat_per_enhance: 1,
   heat_costs: { Common: 1, Rare: 2, Legendary: 3 },
   store_prices: { Common: 100, Rare: 180, Legendary: 300 },
-  blessing_prices: { Common: 80, Rare: 120, Legendary: 180 }, notes: '',
+  blessing_prices: { Common: 80, Rare: 120, Legendary: 180 },
+  equation_prices: { Rare: 200, Epic: 450, Legendary: 650 }, notes: '',
 };
 let OFFER = [];
 const CACHE = new Map();
@@ -1076,11 +1077,13 @@ let SHELF_KIND = 'curio';
 
 // The two shops are separate screens with separate price lists, so the tables
 // are kept apart rather than merged behind one "price by rarity".
-const priceKey = () => (SHELF_KIND === 'blessing' ? 'blessing_prices' : 'store_prices');
+const priceKey = () => ({ blessing: 'blessing_prices', equation: 'equation_prices' }[SHELF_KIND]
+                         || 'store_prices');
 const shelfPrice = (c) => (RUN[priceKey()] || {})[c.rarity] || 0;
 
 const SHELF_COPY = {
   curio: {
+    rarities: ['Common', 'Rare', 'Legendary'],
     placeholder: "Type a Curio on the shelf, e.g. 'Sealing Wax'…",
     note: 'Herta sells Curios, one at a time.',
     prices: 'Nothing datamined a price table, so these come from play. A 1-star reads '
@@ -1088,11 +1091,23 @@ const SHELF_COPY = {
       + 'a card always wins.',
   },
   blessing: {
+    rarities: ['Common', 'Rare', 'Legendary'],
     placeholder: "Type a Blessing on the shelf, e.g. 'Nova Burst'…",
     note: 'Blessings, with Batch Select, so the answer is a set.',
     prices: 'All three prices come off one Blessing Store screen. The ordinary Blessing '
       + 'scorer judges these, so Equation progress and Path concentration decide it, the '
       + 'same two things the counters along the top of that screen show you.',
+  },
+  equation: {
+    // Equations are graded Rare, Epic and Legendary rather than Common, Rare
+    // and Legendary, so this shelf relabels the price boxes.
+    rarities: ['Rare', 'Epic', 'Legendary'],
+    placeholder: "Type an Equation on the shelf, e.g. 'Eternal Sprint'…",
+    note: 'Equations, with Batch Select, so the answer is a set.',
+    prices: 'All three prices come off one Equation Store screen. What decides a card '
+      + 'here is whether it would ever switch on: an Equation whose Paths you already '
+      + 'meet turns on the moment you buy it, and one you are nine blessings away from '
+      + 'with two picks left is worth nothing however rare it is.',
   },
 };
 
@@ -1101,11 +1116,11 @@ function applyShelfKind() {
   $('#storeSearch').placeholder = copy.placeholder;
   $('#storeKindNote').textContent = copy.note;
   $('#storePriceNote').textContent = copy.prices;
-  [['priceCommon', 'Common'], ['priceRare', 'Rare'], ['priceLegendary', 'Legendary']]
-    .forEach(([id, rarity]) => {
-      const v = (RUN[priceKey()] || {})[rarity];
-      if (v != null) $('#' + id).value = v;
-    });
+  copy.rarities.forEach((rarity, i) => {
+    $('#priceLabel' + (i + 1)).textContent = rarity;
+    const v = (RUN[priceKey()] || {})[rarity];
+    if (v != null) $('#price' + (i + 1)).value = v;
+  });
 }
 
 function renderShelf() {
@@ -1259,10 +1274,12 @@ function buyFromShelf(steps) {
 }
 
 function setupStore() {
-  [['priceCommon', 'Common'], ['priceRare', 'Rare'], ['priceLegendary', 'Legendary']]
-    .forEach(([id, rarity]) => {
-      const inp = $('#' + id);
+  [1, 2, 3].forEach((slot) => {
+      const inp = $('#price' + slot);
       inp.addEventListener('change', () => {
+        // Which tier this box means depends on the shelf, so it is read at the
+        // moment of the edit rather than bound once at setup.
+        const rarity = SHELF_COPY[SHELF_KIND].rarities[slot - 1];
         const key = priceKey();
         RUN[key] = Object.assign({}, RUN[key], { [rarity]: parseInt(inp.value || '0', 10) });
         // Re-price only the cards still showing their prefill, so a corrected
@@ -1275,7 +1292,7 @@ function setupStore() {
 
   $('#storeKind').addEventListener('change', () => {
     SHELF_KIND = $('#storeKind').value;
-    // The two shelves are different screens, so switching clears rather than
+    // The three shelves are different screens, so switching clears rather than
     // carrying Curios into a Blessing Store where they cannot be bought.
     SHELF.length = 0;
     $('#storeResult').innerHTML = '';
@@ -2700,12 +2717,16 @@ async function renderChangelog() {
     : 'Running locally from the working tree, so there is no build id.';
 
   const box = $('#logBody');
+  const nav = $('#logNav');
+  // Cleared alongside the body everywhere below: an index left pointing at
+  // sections that are no longer rendered is worse than no index.
   let data;
   try {
     data = await api('/api/changelog');
   } catch (e) {
     if (token !== LOG_RENDER) return;
     box.innerHTML = '';
+    nav.innerHTML = '';
     box.append(el('div', 'hint', 'could not load the changelog: ' + e.message));
     return;
   }
@@ -2713,6 +2734,7 @@ async function renderChangelog() {
   // overtaken throws its result away rather than painting it over a newer one.
   if (token !== LOG_RENDER) return;
   box.innerHTML = '';
+  nav.innerHTML = '';
   if (data.note) box.append(el('div', 'hint', data.note));
   if (!data.entries?.length) {
     box.append(emptyState('Nothing recorded yet.'));
@@ -2720,6 +2742,7 @@ async function renderChangelog() {
   }
   data.entries.forEach((entry, i) => {
     const sec = el('div', 'logentry');
+    sec.id = 'rel-' + i;
     const h = el('h3', null, entry.title);
     // The top section is what this build shipped; it is dated by the build
     // itself, since a record written after the deploy could only describe the
@@ -2729,6 +2752,33 @@ async function renderChangelog() {
         ? `This build · ${meta('du-built')}` : 'Not yet published';
     }
     sec.append(h);
+
+    // One nav row per release, labelled from the heading the section ended up
+    // with rather than from entry.title, so the top row says what it says above.
+    //
+    // "Running" needs both tests, and the live site is the case that proves it.
+    // `du publish` stamps CHANGELOG.md *after* the push, so the deployed copy's
+    // top section is still "Unreleased" and carries no build id to match on. The
+    // heading above was just rewritten to "This build" for exactly that reason,
+    // and this is the same condition. Every older release does carry its id, so
+    // that is what matches them.
+    //
+    // Still never by position: a local run is served off the working tree with
+    // no build id at all, and marking the newest release as the one you are
+    // running would be a confident claim the page cannot support.
+    const thisBuild = i === 0 && /unreleased/i.test(entry.title || '');
+    const running = !!build && (thisBuild || (entry.title || '').includes(build));
+    const a = el('a', 'exlink' + (running ? ' running' : ''));
+    a.href = '#' + sec.id;
+    a.append(el('span', null, h.textContent));
+    const n = (entry.groups || [{ items: entry.items }])
+      .reduce((t, g) => t + (g.items?.length || 0), 0);
+    a.append(el('span', 'prov', String(n)));
+    a.onclick = (ev) => {
+      ev.preventDefault();
+      $('#' + sec.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    nav.append(a);
     // Categories, the way patch notes are laid out. A release written before
     // they existed parses into one untitled group, which renders exactly as it
     // always did rather than growing an empty heading.

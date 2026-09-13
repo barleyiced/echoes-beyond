@@ -25,6 +25,44 @@ shipped, and starts a fresh `## Unreleased` above it.
 
 ## Unreleased
 
+## 2026-09-13 · build 1d3856688ed7
+
+### Bug Fixes
+
+- The Changelog tab marks which release you are running again. The first attempt
+  matched on the build id printed in each release heading, and the newest release
+  does not have one yet: the site ships its changelog before that release is
+  stamped, so the section describing the build you are on is still called
+  Unreleased while you are reading it. It now recognises that section too.
+
+## 2026-09-13 · build 4d349f520b79
+
+### Bug Fixes
+
+- Groundwork for marking which release you are running on the Changelog tab. The
+  marker itself arrives in the next release.
+
+## 2026-09-13 · build 9ac616f26cf6
+
+### New Features
+
+- The Spend tab has a third shelf: the **Equation Store**. Type the Equations on
+  offer and it ranks them against walking out, with Batch Select for buying a
+  set. Prices default to 200, 450 and 650 by rarity, read off the store screen,
+  and you can correct any of them.
+- What decides a card there is whether it would ever switch on. An Equation whose
+  Paths you already meet turns on the moment you buy it and scores highest. One
+  you are nine blessings away from with two picks left scores nothing, however
+  rare it is, and the card tells you which of the two it is. Buying one records
+  it in What I own and takes the fragments off your balance.
+
+### Optimizations
+
+- The Changelog tab has a release index down the side, and the page no longer
+  stretches a narrow column of text across an empty panel. Click a release to
+  jump to it. The build you are running is marked, and on a local copy nothing is
+  marked, because a local copy has no build id to match.
+
 ## 2026-09-13 · build b0b8c3774a87
 
 ### Notices

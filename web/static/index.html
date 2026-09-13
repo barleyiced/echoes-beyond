@@ -317,6 +317,7 @@
         <select id="storeKind">
           <option value="curio">Curio Store (Herta)</option>
           <option value="blessing">Blessing Store</option>
+          <option value="equation">Equation Store</option>
         </select>
       </label>
       <span class="hint" id="storeKindNote" style="margin:0"></span>
@@ -330,9 +331,13 @@
     </p>
     <div class="row">
       <span class="hint" style="margin:0">Price by rarity</span>
-      <label>Common <input type="number" id="priceCommon" min="0" max="9999" value="100"></label>
-      <label>Rare <input type="number" id="priceRare" min="0" max="9999" value="180"></label>
-      <label>Legendary <input type="number" id="priceLegendary" min="0" max="9999" value="300"></label>
+      <!-- The three tiers are relabelled per shelf: the Curio and Blessing stores
+           sell Common/Rare/Legendary, the Equation Store sells Rare/Epic/Legendary.
+           Labels are set by applyShelfKind so a tier that does not exist on this
+           shelf is never shown with a price beside it. -->
+      <label><span id="priceLabel1">Common</span> <input type="number" id="price1" min="0" max="9999" value="100"></label>
+      <label><span id="priceLabel2">Rare</span> <input type="number" id="price2" min="0" max="9999" value="180"></label>
+      <label><span id="priceLabel3">Legendary</span> <input type="number" id="price3" min="0" max="9999" value="300"></label>
     </div>
     <p class="hint" id="storePriceNote"></p>
     <input id="storeSearch" placeholder="Type a Curio on the shelf, e.g. 'Sealing Wax'…" autocomplete="off">
@@ -668,7 +673,11 @@
 <!-- ------------------------------------------------------------- CHANGELOG -->
 <!-- Read out of CHANGELOG.md at request time, never transcribed into the page,
      for the same reason the How it scores tab reads live constants. -->
-<section id="tab-log" class="tab">
+<!-- Two columns for the same reason How it scores has them: the prose is capped
+     at a readable measure, which left most of a full-width card empty, and a
+     release index is what that space is actually good for. -->
+<section id="tab-log" class="tab split wide-left">
+  <div class="col">
   <div class="card">
     <h2><svg><use href="#i-run"/></svg>What changed, and when</h2>
     <p class="hint">
@@ -678,6 +687,15 @@
     </p>
     <div id="logBuild" class="hint"></div>
     <div id="logBody"></div>
+  </div>
+  </div>
+
+  <div class="col">
+  <div class="card">
+    <h2><svg><use href="#i-decide"/></svg>Releases</h2>
+    <p class="hint">Jump to one. The build you are running is marked.</p>
+    <nav id="logNav" class="explainnav"></nav>
+  </div>
   </div>
 </section>
 

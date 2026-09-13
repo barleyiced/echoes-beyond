@@ -437,10 +437,87 @@ def _blessing_value(entry: dict, run: RunState) -> dict:
     }
 
 
+# An Equation is a permanent global buff rather than one more card, so a track
+# worth 0.85 to `equations._track_value` is worth more at a shelf than a Blessing
+# scoring 0.85 of its own scale. This lifts it onto the same 0..~1.3 range the
+# other two shelves use, where an Equation you can switch on immediately lands
+# near the top and a distant one falls under `FLOOR`.
+#
+# An estimate, like everything else numeric in this module. What is *not* a
+# guess is the shape: proximity and budget both come from
+# `equations._track_value`, which is the same judgement the Run state tab makes.
+EQUATION_SCALE = 1.6
+
+
+def _equation_value(entry: dict, run: RunState) -> dict:
+    """What an Equation on the shelf is worth, from the Equation tracker itself.
+
+    Nothing is re-derived, for the same reason `_blessing_value` re-uses
+    `score_entry`: the question this shelf asks is "will this actually switch on
+    before the run ends", and `equations` already answers it. Buying one is the
+    only way the run is known to acquire an Equation, which is what makes the
+    shelf worth modelling at all.
+    """
+    counts = run.path_counts()
+    st = equations.status_for(entry, counts)
+    picks = run.picks_remaining()
+
+    # Deliberately *not* `equations._track_value`. That answers "is this track
+    # worth steering my next blessing pick toward", and it floors proximity at
+    # 0.35 and budget at 0.40 because a track you are advancing keeps option
+    # value even when it is far off. Buying is a different question with a price
+    # attached: an Equation you cannot finish before the run ends is worth zero,
+    # not 14% of its tier.
+    #
+    # Left alone, those floors broke invariant 3 on this shelf. A Legendary 15
+    # blessings away scored 0.13 against a Rare 6 away at 0.12, so the rarity was
+    # buying itself, which is the one thing this module exists to stop.
+    # `test_an_equation_you_can_switch_on_beats_a_rarer_one_you_cannot`.
+    #
+    # Budget is squared so distance bites hard rather than tapering: the number
+    # that matters at a till is how many of your remaining picks this would
+    # commit, and committing most of them to one card is close to worthless.
+    if st.distance == 0:
+        raw = st.value
+    else:
+        budget = max(0.0, 1.0 - st.distance / max(1, picks))
+        raw = st.value * budget * budget
+
+    reasons: list[str] = []
+    need = ", ".join(f"{n} more {p}" for p, n in st.missing.items())
+    if not st.reachable:
+        reasons.append(
+            f"this theme has no {' or '.join(st.blocked_paths)} blessings, so it can "
+            f"never switch on")
+        raw = 0.0
+    elif st.active:
+        reasons.append("your Path counts already meet it, so it switches on the moment "
+                       "you buy it")
+    elif st.distance > picks:
+        reasons.append(
+            f"{need}, and about {picks} blessing pick(s) left in the run. You would be "
+            f"buying something that never switches on")
+    else:
+        reasons.append(f"{need} to switch it on, with about {picks} pick(s) left")
+
+    reasons.append(f"{entry['rarity']} Equation, "
+                   + ", ".join(f"{r['path']} {c}" for r, c in
+                               zip(entry["requires"], equations.run_requirements(entry))))
+    return {
+        "value": round(raw * EQUATION_SCALE, 3),
+        "effects": [],
+        "reasons": reasons,
+        "readable": True,
+        "points": round(raw, 3),
+    }
+
+
 def value(entry: dict, run: RunState) -> dict:
     """What this card is worth to this run, 0..~1.3, with the working shown."""
     if entry.get("kind") == "blessing":
         return _blessing_value(entry, run)
+    if entry.get("kind") == "equation":
+        return _equation_value(entry, run)
     effects = classify(entry)
     reasons: list[str] = []
     left = run.domains_left()
@@ -522,7 +599,7 @@ def _expected_shelf(run: RunState, size: int, rarities: list[str],
     Biased slightly optimistic, since it draws from the whole pool and the store
     may not stock all of it.
     """
-    collection = "blessings" if kind == "blessing" else "curios"
+    collection = {"blessing": "blessings", "equation": "equations"}.get(kind, "curios")
     pool = [c for c in dataset.load()[collection]
             if not c.get("is_negative") and c["id"] not in exclude]
     wanted = set(r for r in rarities if r)
@@ -545,11 +622,12 @@ class Shelf:
     items: list[dict] = field(default_factory=list)   # {"id": int, "cost": int}
     refresh_cost: int = 0
     refreshes_left: int | None = None
-    kind: str = "curio"                               # "curio" | "blessing"
+    kind: str = "curio"                        # "curio" | "blessing" | "equation"
 
 
 def _owned_field(kind: str) -> str:
-    return "owned_blessings" if kind == "blessing" else "owned_curios"
+    return {"blessing": "owned_blessings",
+            "equation": "owned_equations"}.get(kind, "owned_curios")
 
 
 def plan_shelf(candidates: list[dict], run: RunState, kind: str, floor: float) -> dict:
@@ -774,7 +852,7 @@ def decide_store(shelf: Shelf, run: RunState) -> dict:
             exclude=owned_ids | {s["id"] for s in scored}, kind=shelf.kind)
         gain = expected - current
         penalty, cost_why = economy.fragment_cost_penalty(shelf.refresh_cost, run)
-        noun = "Blessings" if shelf.kind == "blessing" else "Curios"
+        noun = {"blessing": "Blessings", "equation": "Equations"}.get(shelf.kind, "Curios")
         rreasons = [
             f"a fresh shelf of {max(1, len(shelf.items))} is worth about {expected:.2f} to "
             f"this run, drawn from the {pool_size} {noun} that could appear",

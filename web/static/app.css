@@ -1017,12 +1017,33 @@ button.doneall { margin-top: 11px; width: 100%; justify-content: center; }
    noticed because every other sidebar is a long list. Here the sidebar is the
    point: it has to follow you down a very long page, so the column itself is
    what sticks. */
-#tab-how > .col:last-child {
+/* The changelog is a reading page, so its prose is capped at the same 88ch
+   measure the explain lists use. Left to the full-width `.tab`, that put a 593px
+   column of text inside an 1800px card and two thirds of the panel was empty,
+   which reads as a broken layout rather than as margin. Capping the tab keeps
+   the empty space *outside* the cards, where it is just margin, and sizes the
+   second column to what a release index actually needs. */
+#tab-log { max-width: 1100px; margin-inline: auto; }
+#tab-log.split.wide-left { grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); }
+/* The collapse lives here rather than in the shared 1180px block up the file.
+   That block is `.split, .split.wide-left`, and this selector is an id plus two
+   classes, so it outranks it *and* comes later. A media query adds no
+   specificity of its own, so naming the tab there would have been dead CSS and
+   the changelog would have laid two columns into a 390px phone. Same trap
+   `.split.wide-left` itself was added for, one specificity step further along. */
+@media (max-width: 1180px) {
+  #tab-log { max-width: none; }
+  #tab-log.split.wide-left { grid-template-columns: minmax(0, 1fr); }
+}
+
+#tab-how > .col:last-child,
+#tab-log > .col:last-child {
   position: sticky; top: 14px; align-self: start;
   max-height: calc(100vh - 28px); overflow-y: auto;
 }
 @media (max-width: 1180px) {
-  #tab-how > .col:last-child { position: static; max-height: none; overflow: visible; }
+  #tab-how > .col:last-child,
+  #tab-log > .col:last-child { position: static; max-height: none; overflow: visible; }
 }
 
 .extable { margin: 0 0 20px; }
@@ -1051,6 +1072,10 @@ button.doneall { margin-top: 11px; width: 100%; justify-content: center; }
   padding: 5px 8px; border-radius: 6px; border: 1px solid transparent;
 }
 .exlink:hover { color: var(--text); background: var(--panel-2); border-color: var(--line); }
+/* The release you are actually looking at. Set by build id, never by position,
+   so a local run marks nothing rather than claiming the newest. */
+.exlink.running { color: var(--text); border-color: rgba(242,158,56,.4); }
+.exlink.running .prov { color: var(--accent); border-color: rgba(242,158,56,.4); }
 
 /* The live-values panel. Each row is a value with its explanation underneath,
    because the number alone ("0.82") is exactly the thing this tab exists to

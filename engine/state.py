@@ -268,9 +268,23 @@ class RunState:
     blessing_prices: dict[str, int] = field(
         default_factory=lambda: {"Common": 80, "Rare": 120, "Legendary": 180})
 
+    # The Equation Store, a third shop again with its own prices: 200 / 450 / 650
+    # by rarity, read off one screen on 2026-09-13. Equation rarities are named
+    # Rare / Epic / Legendary rather than the Common / Rare / Legendary the other
+    # two shelves use, so this table is keyed differently on purpose. Boundary
+    # Equations have never been seen for sale and get no entry, which reads as 0
+    # and means the price has to be typed at the shelf.
+    equation_prices: dict[str, int] = field(
+        default_factory=lambda: {"Rare": 200, "Epic": 450, "Legendary": 650})
+
     def store_price(self, entry: dict) -> int:
-        table = (self.blessing_prices if entry.get("kind") == "blessing"
-                 else self.store_prices)
+        kind = entry.get("kind")
+        if kind == "blessing":
+            table = self.blessing_prices
+        elif kind == "equation":
+            table = self.equation_prices
+        else:
+            table = self.store_prices
         return int(table.get(entry.get("rarity", ""), 0))
 
     def enhance_cost(self, blessing: dict) -> int:

@@ -67,6 +67,7 @@ class RunPayload(BaseModel):
     heat_per_enhance: int = 1
     store_prices: dict[str, int] = {"Common": 100, "Rare": 180, "Legendary": 300}
     blessing_prices: dict[str, int] = {"Common": 80, "Rare": 120, "Legendary": 180}
+    equation_prices: dict[str, int] = {"Rare": 200, "Epic": 450, "Legendary": 650}
     notes: str = ""
 
     # Transport-level, not part of the run. Declared because pydantic drops

@@ -363,7 +363,7 @@ def store_shelf(body: dict) -> dict:
     """Rank a store shelf against walking out — which is the default answer."""
     run = _run(body)
     kind = body.get("kind", "curio")
-    if kind not in ("curio", "blessing"):
+    if kind not in ("curio", "blessing", "equation"):
         raise ApiError(400, f"unknown shelf kind {kind!r}")
 
     items = []
